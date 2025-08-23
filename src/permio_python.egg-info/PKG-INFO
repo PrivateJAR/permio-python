@@ -1,0 +1,30 @@
+Metadata-Version: 2.4
+Name: permio-python
+Version: 0.0.11
+Summary: Generated Protocol Buffer Python code for Permio
+Author-email: Permio <support@example.com>
+License: Apache-2.0
+Project-URL: Homepage, https://github.com/PrivateJAR/permio-python
+Project-URL: Source, https://github.com/PrivateJAR/permio-python
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+
+# Permio Python
+
+Generated Protocol Buffer Python code for Permio.
+
+## Installation
+
+Collecting git+https://github.com/PrivateJAR/permio-python@v0.0.11
+  Cloning https://github.com/PrivateJAR/permio-python (to revision v0.0.11) to /tmp/pip-req-build-y827pqk0
+
+## Usage
+
+
+
+## Version
+
+v0.0.11
