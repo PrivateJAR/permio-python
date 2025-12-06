@@ -4,8 +4,8 @@ Generated Protocol Buffer Python code for Permio.
 
 ## Installation
 
-Collecting git+https://github.com/PrivateJAR/permio-python@vv0.0.11
-  Cloning https://github.com/PrivateJAR/permio-python (to revision vv0.0.11) to /tmp/pip-req-build-zmj2aoin
+Collecting git+https://github.com/PrivateJAR/permio-python@v0.0.12
+  Cloning https://github.com/PrivateJAR/permio-python (to revision v0.0.12) to /tmp/pip-req-build-62x_y2z5
 
 ## Usage
 
@@ -13,4 +13,4 @@ Collecting git+https://github.com/PrivateJAR/permio-python@vv0.0.11
 
 ## Version
 
-vv0.0.11
+v0.0.12
