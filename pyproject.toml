@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "permio-python"
-version = "0.0.11"
+version = "v0.0.11"
 description = "Generated Protocol Buffer Python code for Permio"
 readme = "README.md"
 license = {text = "Apache-2.0"}
