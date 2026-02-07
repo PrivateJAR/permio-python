@@ -9,7 +9,7 @@ from typing import ClassVar as _ClassVar, Optional as _Optional
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class PaginationRequest(_message.Message):
-    __slots__ = ()
+    __slots__ = ("limit", "cursor")
     LIMIT_FIELD_NUMBER: _ClassVar[int]
     CURSOR_FIELD_NUMBER: _ClassVar[int]
     limit: int
@@ -17,7 +17,7 @@ class PaginationRequest(_message.Message):
     def __init__(self, limit: _Optional[int] = ..., cursor: _Optional[str] = ...) -> None: ...
 
 class PaginationResponse(_message.Message):
-    __slots__ = ()
+    __slots__ = ("next_cursor",)
     NEXT_CURSOR_FIELD_NUMBER: _ClassVar[int]
     next_cursor: str
     def __init__(self, next_cursor: _Optional[str] = ...) -> None: ...

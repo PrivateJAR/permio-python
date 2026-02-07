@@ -12,13 +12,13 @@ from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class GetTotalRolesAndPermissionsForOrganisationRequest(_message.Message):
-    __slots__ = ()
+    __slots__ = ("organisation_id",)
     ORGANISATION_ID_FIELD_NUMBER: _ClassVar[int]
     organisation_id: str
     def __init__(self, organisation_id: _Optional[str] = ...) -> None: ...
 
 class GetTotalRolesAndPermissionsForOrganisationResponse(_message.Message):
-    __slots__ = ()
+    __slots__ = ("total_roles", "total_permissions")
     TOTAL_ROLES_FIELD_NUMBER: _ClassVar[int]
     TOTAL_PERMISSIONS_FIELD_NUMBER: _ClassVar[int]
     total_roles: int
@@ -26,7 +26,7 @@ class GetTotalRolesAndPermissionsForOrganisationResponse(_message.Message):
     def __init__(self, total_roles: _Optional[int] = ..., total_permissions: _Optional[int] = ...) -> None: ...
 
 class ListRolesRequest(_message.Message):
-    __slots__ = ()
+    __slots__ = ("project_name", "pagination", "search")
     PROJECT_NAME_FIELD_NUMBER: _ClassVar[int]
     PAGINATION_FIELD_NUMBER: _ClassVar[int]
     SEARCH_FIELD_NUMBER: _ClassVar[int]
@@ -36,7 +36,7 @@ class ListRolesRequest(_message.Message):
     def __init__(self, project_name: _Optional[str] = ..., pagination: _Optional[_Union[_pagination_pb2.PaginationRequest, _Mapping]] = ..., search: _Optional[str] = ...) -> None: ...
 
 class ListPermissionsRequest(_message.Message):
-    __slots__ = ()
+    __slots__ = ("project_name", "pagination", "search")
     PROJECT_NAME_FIELD_NUMBER: _ClassVar[int]
     PAGINATION_FIELD_NUMBER: _ClassVar[int]
     SEARCH_FIELD_NUMBER: _ClassVar[int]
@@ -46,7 +46,7 @@ class ListPermissionsRequest(_message.Message):
     def __init__(self, project_name: _Optional[str] = ..., pagination: _Optional[_Union[_pagination_pb2.PaginationRequest, _Mapping]] = ..., search: _Optional[str] = ...) -> None: ...
 
 class ListPrincipalsRequest(_message.Message):
-    __slots__ = ()
+    __slots__ = ("project_name", "pagination", "search")
     PROJECT_NAME_FIELD_NUMBER: _ClassVar[int]
     PAGINATION_FIELD_NUMBER: _ClassVar[int]
     SEARCH_FIELD_NUMBER: _ClassVar[int]
@@ -56,7 +56,7 @@ class ListPrincipalsRequest(_message.Message):
     def __init__(self, project_name: _Optional[str] = ..., pagination: _Optional[_Union[_pagination_pb2.PaginationRequest, _Mapping]] = ..., search: _Optional[str] = ...) -> None: ...
 
 class CheckPermissionRequest(_message.Message):
-    __slots__ = ()
+    __slots__ = ("project_name", "principal_id", "resource_uris", "permissions")
     PROJECT_NAME_FIELD_NUMBER: _ClassVar[int]
     PRINCIPAL_ID_FIELD_NUMBER: _ClassVar[int]
     RESOURCE_URIS_FIELD_NUMBER: _ClassVar[int]
@@ -68,7 +68,7 @@ class CheckPermissionRequest(_message.Message):
     def __init__(self, project_name: _Optional[str] = ..., principal_id: _Optional[str] = ..., resource_uris: _Optional[_Iterable[str]] = ..., permissions: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class MissingPermissions(_message.Message):
-    __slots__ = ()
+    __slots__ = ("resource_uri", "missing_permissions")
     RESOURCE_URI_FIELD_NUMBER: _ClassVar[int]
     MISSING_PERMISSIONS_FIELD_NUMBER: _ClassVar[int]
     resource_uri: str
@@ -76,7 +76,7 @@ class MissingPermissions(_message.Message):
     def __init__(self, resource_uri: _Optional[str] = ..., missing_permissions: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class CheckPermissionResponse(_message.Message):
-    __slots__ = ()
+    __slots__ = ("passed", "missing_permissions")
     PASSED_FIELD_NUMBER: _ClassVar[int]
     MISSING_PERMISSIONS_FIELD_NUMBER: _ClassVar[int]
     passed: bool
@@ -84,7 +84,7 @@ class CheckPermissionResponse(_message.Message):
     def __init__(self, passed: _Optional[bool] = ..., missing_permissions: _Optional[_Iterable[_Union[MissingPermissions, _Mapping]]] = ...) -> None: ...
 
 class ListPrincipalsResponse(_message.Message):
-    __slots__ = ()
+    __slots__ = ("principals", "pagination")
     PRINCIPALS_FIELD_NUMBER: _ClassVar[int]
     PAGINATION_FIELD_NUMBER: _ClassVar[int]
     principals: _containers.RepeatedScalarFieldContainer[str]
@@ -92,7 +92,7 @@ class ListPrincipalsResponse(_message.Message):
     def __init__(self, principals: _Optional[_Iterable[str]] = ..., pagination: _Optional[_Union[_pagination_pb2.PaginationResponse, _Mapping]] = ...) -> None: ...
 
 class GetAllAssignmentsForPrincipalRequest(_message.Message):
-    __slots__ = ()
+    __slots__ = ("project_name", "principal_id", "pagination")
     PROJECT_NAME_FIELD_NUMBER: _ClassVar[int]
     PRINCIPAL_ID_FIELD_NUMBER: _ClassVar[int]
     PAGINATION_FIELD_NUMBER: _ClassVar[int]
@@ -102,7 +102,7 @@ class GetAllAssignmentsForPrincipalRequest(_message.Message):
     def __init__(self, project_name: _Optional[str] = ..., principal_id: _Optional[str] = ..., pagination: _Optional[_Union[_pagination_pb2.PaginationRequest, _Mapping]] = ...) -> None: ...
 
 class GetAllAssignmentsForPrincipalResponse(_message.Message):
-    __slots__ = ()
+    __slots__ = ("assignments", "pagination")
     ASSIGNMENTS_FIELD_NUMBER: _ClassVar[int]
     PAGINATION_FIELD_NUMBER: _ClassVar[int]
     assignments: _containers.RepeatedCompositeFieldContainer[Assignment]
@@ -110,7 +110,7 @@ class GetAllAssignmentsForPrincipalResponse(_message.Message):
     def __init__(self, assignments: _Optional[_Iterable[_Union[Assignment, _Mapping]]] = ..., pagination: _Optional[_Union[_pagination_pb2.PaginationResponse, _Mapping]] = ...) -> None: ...
 
 class InheritedRole(_message.Message):
-    __slots__ = ()
+    __slots__ = ("role", "inherited_from")
     ROLE_FIELD_NUMBER: _ClassVar[int]
     INHERITED_FROM_FIELD_NUMBER: _ClassVar[int]
     role: Role
@@ -118,7 +118,7 @@ class InheritedRole(_message.Message):
     def __init__(self, role: _Optional[_Union[Role, _Mapping]] = ..., inherited_from: _Optional[str] = ...) -> None: ...
 
 class InheritedPermission(_message.Message):
-    __slots__ = ()
+    __slots__ = ("permission", "inherited_from")
     PERMISSION_FIELD_NUMBER: _ClassVar[int]
     INHERITED_FROM_FIELD_NUMBER: _ClassVar[int]
     permission: Permission
@@ -126,7 +126,7 @@ class InheritedPermission(_message.Message):
     def __init__(self, permission: _Optional[_Union[Permission, _Mapping]] = ..., inherited_from: _Optional[str] = ...) -> None: ...
 
 class Assignment(_message.Message):
-    __slots__ = ()
+    __slots__ = ("resource_uri", "permissions", "roles")
     RESOURCE_URI_FIELD_NUMBER: _ClassVar[int]
     PERMISSIONS_FIELD_NUMBER: _ClassVar[int]
     ROLES_FIELD_NUMBER: _ClassVar[int]
@@ -136,7 +136,7 @@ class Assignment(_message.Message):
     def __init__(self, resource_uri: _Optional[str] = ..., permissions: _Optional[_Iterable[_Union[Permission, _Mapping]]] = ..., roles: _Optional[_Iterable[_Union[Role, _Mapping]]] = ...) -> None: ...
 
 class GetUserPermissionsAndRolesOnResourceResponse(_message.Message):
-    __slots__ = ()
+    __slots__ = ("project_name", "user_id", "resource_uri", "permissions", "roles")
     PROJECT_NAME_FIELD_NUMBER: _ClassVar[int]
     USER_ID_FIELD_NUMBER: _ClassVar[int]
     RESOURCE_URI_FIELD_NUMBER: _ClassVar[int]
@@ -150,7 +150,7 @@ class GetUserPermissionsAndRolesOnResourceResponse(_message.Message):
     def __init__(self, project_name: _Optional[str] = ..., user_id: _Optional[str] = ..., resource_uri: _Optional[str] = ..., permissions: _Optional[_Iterable[str]] = ..., roles: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class GetUserPermissionsAndRolesOnResourceRequest(_message.Message):
-    __slots__ = ()
+    __slots__ = ("project_name", "user_id", "resource_uri")
     PROJECT_NAME_FIELD_NUMBER: _ClassVar[int]
     USER_ID_FIELD_NUMBER: _ClassVar[int]
     RESOURCE_URI_FIELD_NUMBER: _ClassVar[int]
@@ -160,7 +160,7 @@ class GetUserPermissionsAndRolesOnResourceRequest(_message.Message):
     def __init__(self, project_name: _Optional[str] = ..., user_id: _Optional[str] = ..., resource_uri: _Optional[str] = ...) -> None: ...
 
 class GrantUserPermissionsAndRolesOnResourceRequest(_message.Message):
-    __slots__ = ()
+    __slots__ = ("project_name", "user_id", "resource_uri", "permissions", "roles")
     PROJECT_NAME_FIELD_NUMBER: _ClassVar[int]
     USER_ID_FIELD_NUMBER: _ClassVar[int]
     RESOURCE_URI_FIELD_NUMBER: _ClassVar[int]
@@ -174,7 +174,7 @@ class GrantUserPermissionsAndRolesOnResourceRequest(_message.Message):
     def __init__(self, project_name: _Optional[str] = ..., user_id: _Optional[str] = ..., resource_uri: _Optional[str] = ..., permissions: _Optional[_Iterable[str]] = ..., roles: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class CreatePermissionRequest(_message.Message):
-    __slots__ = ()
+    __slots__ = ("project_name", "name", "description")
     PROJECT_NAME_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
@@ -184,7 +184,7 @@ class CreatePermissionRequest(_message.Message):
     def __init__(self, project_name: _Optional[str] = ..., name: _Optional[str] = ..., description: _Optional[str] = ...) -> None: ...
 
 class Permission(_message.Message):
-    __slots__ = ()
+    __slots__ = ("id", "organisation_id", "name", "description", "project_name")
     ID_FIELD_NUMBER: _ClassVar[int]
     ORGANISATION_ID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
@@ -198,7 +198,7 @@ class Permission(_message.Message):
     def __init__(self, id: _Optional[str] = ..., organisation_id: _Optional[str] = ..., name: _Optional[str] = ..., description: _Optional[str] = ..., project_name: _Optional[str] = ...) -> None: ...
 
 class GetPermissionRequest(_message.Message):
-    __slots__ = ()
+    __slots__ = ("project_name", "name")
     PROJECT_NAME_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     project_name: str
@@ -206,7 +206,7 @@ class GetPermissionRequest(_message.Message):
     def __init__(self, project_name: _Optional[str] = ..., name: _Optional[str] = ...) -> None: ...
 
 class UpdatePermissionRequest(_message.Message):
-    __slots__ = ()
+    __slots__ = ("project_name", "name", "new_name", "description")
     PROJECT_NAME_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     NEW_NAME_FIELD_NUMBER: _ClassVar[int]
@@ -218,7 +218,7 @@ class UpdatePermissionRequest(_message.Message):
     def __init__(self, project_name: _Optional[str] = ..., name: _Optional[str] = ..., new_name: _Optional[str] = ..., description: _Optional[str] = ...) -> None: ...
 
 class DeletePermissionRequest(_message.Message):
-    __slots__ = ()
+    __slots__ = ("project_name", "name")
     PROJECT_NAME_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     project_name: str
@@ -226,7 +226,7 @@ class DeletePermissionRequest(_message.Message):
     def __init__(self, project_name: _Optional[str] = ..., name: _Optional[str] = ...) -> None: ...
 
 class ListPermissionsResponse(_message.Message):
-    __slots__ = ()
+    __slots__ = ("permissions", "pagination")
     PERMISSIONS_FIELD_NUMBER: _ClassVar[int]
     PAGINATION_FIELD_NUMBER: _ClassVar[int]
     permissions: _containers.RepeatedCompositeFieldContainer[Permission]
@@ -234,7 +234,7 @@ class ListPermissionsResponse(_message.Message):
     def __init__(self, permissions: _Optional[_Iterable[_Union[Permission, _Mapping]]] = ..., pagination: _Optional[_Union[_pagination_pb2.PaginationResponse, _Mapping]] = ...) -> None: ...
 
 class CreateRoleRequest(_message.Message):
-    __slots__ = ()
+    __slots__ = ("project_name", "name", "description", "permissions")
     PROJECT_NAME_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
@@ -246,7 +246,7 @@ class CreateRoleRequest(_message.Message):
     def __init__(self, project_name: _Optional[str] = ..., name: _Optional[str] = ..., description: _Optional[str] = ..., permissions: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class Role(_message.Message):
-    __slots__ = ()
+    __slots__ = ("id", "organisation_id", "name", "description", "permissions", "project_name")
     ID_FIELD_NUMBER: _ClassVar[int]
     ORGANISATION_ID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
@@ -262,7 +262,7 @@ class Role(_message.Message):
     def __init__(self, id: _Optional[str] = ..., organisation_id: _Optional[str] = ..., name: _Optional[str] = ..., description: _Optional[str] = ..., permissions: _Optional[_Iterable[_Union[Permission, _Mapping]]] = ..., project_name: _Optional[str] = ...) -> None: ...
 
 class GetRoleRequest(_message.Message):
-    __slots__ = ()
+    __slots__ = ("project_name", "id")
     PROJECT_NAME_FIELD_NUMBER: _ClassVar[int]
     ID_FIELD_NUMBER: _ClassVar[int]
     project_name: str
@@ -270,7 +270,7 @@ class GetRoleRequest(_message.Message):
     def __init__(self, project_name: _Optional[str] = ..., id: _Optional[str] = ...) -> None: ...
 
 class UpdateRoleRequest(_message.Message):
-    __slots__ = ()
+    __slots__ = ("project_name", "id", "name", "description", "permissions")
     PROJECT_NAME_FIELD_NUMBER: _ClassVar[int]
     ID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
@@ -284,7 +284,7 @@ class UpdateRoleRequest(_message.Message):
     def __init__(self, project_name: _Optional[str] = ..., id: _Optional[str] = ..., name: _Optional[str] = ..., description: _Optional[str] = ..., permissions: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class DeleteRoleRequest(_message.Message):
-    __slots__ = ()
+    __slots__ = ("project_name", "id")
     PROJECT_NAME_FIELD_NUMBER: _ClassVar[int]
     ID_FIELD_NUMBER: _ClassVar[int]
     project_name: str
@@ -292,7 +292,7 @@ class DeleteRoleRequest(_message.Message):
     def __init__(self, project_name: _Optional[str] = ..., id: _Optional[str] = ...) -> None: ...
 
 class ListRolesResponse(_message.Message):
-    __slots__ = ()
+    __slots__ = ("roles", "pagination")
     ROLES_FIELD_NUMBER: _ClassVar[int]
     PAGINATION_FIELD_NUMBER: _ClassVar[int]
     roles: _containers.RepeatedCompositeFieldContainer[Role]
@@ -300,7 +300,7 @@ class ListRolesResponse(_message.Message):
     def __init__(self, roles: _Optional[_Iterable[_Union[Role, _Mapping]]] = ..., pagination: _Optional[_Union[_pagination_pb2.PaginationResponse, _Mapping]] = ...) -> None: ...
 
 class RevokeUserPermissionsAndRolesOnResourceRequest(_message.Message):
-    __slots__ = ()
+    __slots__ = ("project_name", "user_id", "resource_uri", "permissions", "roles")
     PROJECT_NAME_FIELD_NUMBER: _ClassVar[int]
     USER_ID_FIELD_NUMBER: _ClassVar[int]
     RESOURCE_URI_FIELD_NUMBER: _ClassVar[int]
@@ -314,7 +314,7 @@ class RevokeUserPermissionsAndRolesOnResourceRequest(_message.Message):
     def __init__(self, project_name: _Optional[str] = ..., user_id: _Optional[str] = ..., resource_uri: _Optional[str] = ..., permissions: _Optional[_Iterable[str]] = ..., roles: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class PrincipalCountUpdatedEvent(_message.Message):
-    __slots__ = ()
+    __slots__ = ("organisation_id", "unique_principal_count")
     ORGANISATION_ID_FIELD_NUMBER: _ClassVar[int]
     UNIQUE_PRINCIPAL_COUNT_FIELD_NUMBER: _ClassVar[int]
     organisation_id: str
