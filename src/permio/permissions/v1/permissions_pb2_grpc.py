@@ -3,7 +3,7 @@
 import grpc
 
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
-from proto.permissions.v1 import permissions_pb2 as proto_dot_permissions_dot_v1_dot_permissions__pb2
+from permio.permissions.v1 import permissions_pb2 as proto_dot_permissions_dot_v1_dot_permissions__pb2
 
 
 class PermissionsServiceStub(object):
@@ -99,6 +99,66 @@ class PermissionsServiceStub(object):
                 '/permio.permissions.v1.PermissionsService/GetTotalRolesAndPermissionsForOrganisation',
                 request_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.GetTotalRolesAndPermissionsForOrganisationRequest.SerializeToString,
                 response_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.GetTotalRolesAndPermissionsForOrganisationResponse.FromString,
+                _registered_method=True)
+        self.BatchCheck = channel.unary_unary(
+                '/permio.permissions.v1.PermissionsService/BatchCheck',
+                request_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.BatchCheckRequest.SerializeToString,
+                response_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.BatchCheckResponse.FromString,
+                _registered_method=True)
+        self.ListAccess = channel.unary_unary(
+                '/permio.permissions.v1.PermissionsService/ListAccess',
+                request_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.ListAccessRequest.SerializeToString,
+                response_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.ListAccessResponse.FromString,
+                _registered_method=True)
+        self.ListPrincipalsWithAccess = channel.unary_unary(
+                '/permio.permissions.v1.PermissionsService/ListPrincipalsWithAccess',
+                request_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.ListPrincipalsWithAccessRequest.SerializeToString,
+                response_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.ListPrincipalsWithAccessResponse.FromString,
+                _registered_method=True)
+        self.CreateGroup = channel.unary_unary(
+                '/permio.permissions.v1.PermissionsService/CreateGroup',
+                request_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.CreateGroupRequest.SerializeToString,
+                response_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.Group.FromString,
+                _registered_method=True)
+        self.GetGroup = channel.unary_unary(
+                '/permio.permissions.v1.PermissionsService/GetGroup',
+                request_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.GetGroupRequest.SerializeToString,
+                response_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.Group.FromString,
+                _registered_method=True)
+        self.UpdateGroup = channel.unary_unary(
+                '/permio.permissions.v1.PermissionsService/UpdateGroup',
+                request_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.UpdateGroupRequest.SerializeToString,
+                response_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.Group.FromString,
+                _registered_method=True)
+        self.DeleteGroup = channel.unary_unary(
+                '/permio.permissions.v1.PermissionsService/DeleteGroup',
+                request_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.DeleteGroupRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
+        self.ListGroups = channel.unary_unary(
+                '/permio.permissions.v1.PermissionsService/ListGroups',
+                request_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.ListGroupsRequest.SerializeToString,
+                response_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.ListGroupsResponse.FromString,
+                _registered_method=True)
+        self.AddGroupMembers = channel.unary_unary(
+                '/permio.permissions.v1.PermissionsService/AddGroupMembers',
+                request_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.AddGroupMembersRequest.SerializeToString,
+                response_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.AddGroupMembersResponse.FromString,
+                _registered_method=True)
+        self.RemoveGroupMembers = channel.unary_unary(
+                '/permio.permissions.v1.PermissionsService/RemoveGroupMembers',
+                request_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.RemoveGroupMembersRequest.SerializeToString,
+                response_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.RemoveGroupMembersResponse.FromString,
+                _registered_method=True)
+        self.ListGroupMembers = channel.unary_unary(
+                '/permio.permissions.v1.PermissionsService/ListGroupMembers',
+                request_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.ListGroupMembersRequest.SerializeToString,
+                response_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.ListGroupMembersResponse.FromString,
+                _registered_method=True)
+        self.ListGroupsForPrincipal = channel.unary_unary(
+                '/permio.permissions.v1.PermissionsService/ListGroupsForPrincipal',
+                request_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.ListGroupsForPrincipalRequest.SerializeToString,
+                response_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.ListGroupsForPrincipalResponse.FromString,
                 _registered_method=True)
 
 
@@ -259,6 +319,143 @@ class PermissionsServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def BatchCheck(self, request, context):
+        """BatchCheck checks whether a principal has the specified permissions on each of the specified resources and
+        returns one result per resource, in request order. It evaluates exactly like Check (same resource URI inheritance,
+        stored "_" wildcard and group rules, same fail-closed behaviour); a resource's result is allowed only if the
+        principal has every requested permission on it.
+        Required Permissions (the same as Check):
+        - permission.check on /organisation/{organisation_id}/project/{project_name}{resource_uri} for each resource
+        - permission.check on /organisation/{organisation_id}/project/{project_name}/principal/{principal_id}
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListAccess(self, request, context):
+        """ListAccess answers "where can this principal do this permission under under_uri?". It returns the scopes in which
+        Check(principal_id, permission) passes for resources at or below under_uri, counting grants made to the principal
+        directly, through roles, and through the groups the principal is a member of.
+        - If the principal holds the permission on under_uri itself (through a grant on under_uri, an ancestor, or a
+        stored "_" wildcard URI that matches it), covers_all is true and scopes is a single SUBTREE scope for
+        under_uri.
+        - Otherwise scopes lists the URIs of the grants below under_uri that confer the permission: SUBTREE for a
+        concrete URI (grants apply to the URI and everything below it) and PATTERN for a URI with "_" wildcard
+        segments. Scopes are ordered by uri and paginated.
+        Required Permissions:
+        - permission.check on /organisation/{organisation_id}/project/{project_name}{under_uri}
+        - principal.assignment.get on /organisation/{organisation_id}/project/{project_name}/principal/{principal_id}
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListPrincipalsWithAccess(self, request, context):
+        """ListPrincipalsWithAccess answers "who has access to resource_uri?". It lists the principals holding a grant on
+        resource_uri, on an ancestor of it, or on a stored "_" wildcard URI that matches it; when permission is set, only
+        grants that confer that permission count, so a principal is listed if and only if Check(principal, resource_uri,
+        permission) passes through its own grants. Groups are listed as principals (is_group); with expand_groups their
+        members are listed too, once per group, with via_group set. Entries are ordered by principal_id, then via_group,
+        and paginated.
+        Required Permissions:
+        - principal.list on /organisation/{organisation_id}/project/{project_name}
+        - principal.assignment.list on /organisation/{organisation_id}/project/{project_name}
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def CreateGroup(self, request, context):
+        """CreateGroup creates a group in a project. A group is a set of principals: grant permissions and roles to it with
+        GrantUserPermissionsAndRolesOnResource using the principal ID "group:{name}" and every member holds them. Groups
+        cannot contain groups. It returns ALREADY_EXISTS if the project already has a group with this name.
+        Required Permissions:
+        - group.create on /organisation/{organisation_id}/project/{project_name}
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetGroup(self, request, context):
+        """GetGroup returns a group by name.
+        Required Permissions:
+        - group.get on /organisation/{organisation_id}/project/{project_name}/group/{name}
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def UpdateGroup(self, request, context):
+        """UpdateGroup updates a group's description. A group's name cannot be changed, because "group:{name}" is the
+        principal ID its grants are stored under. It returns NOT_FOUND if the group does not exist.
+        Required Permissions:
+        - group.update on /organisation/{organisation_id}/project/{project_name}/group/{name}
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DeleteGroup(self, request, context):
+        """DeleteGroup deletes a group together with its memberships and every grant made to it, in one transaction. It is
+        idempotent and returns ok whether the group existed or not.
+        Required Permissions:
+        - group.delete on /organisation/{organisation_id}/project/{project_name}/group/{name}
+        - principal.assignment.delete on /organisation/{organisation_id}/project/{project_name}
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListGroups(self, request, context):
+        """ListGroups returns the groups in a project, ordered by name.
+        Required Permissions:
+        - group.list on /organisation/{organisation_id}/project/{project_name}
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def AddGroupMembers(self, request, context):
+        """AddGroupMembers adds up to 100 principals to a group. Principals that are already members are reported, not
+        re-added. Principal IDs starting with "group:" are rejected (groups cannot be nested). A principal that is new to
+        the organisation counts towards its unique principals, exactly as if it had been granted something.
+        Required Permissions:
+        - group.member.add on /organisation/{organisation_id}/project/{project_name}/group/{name}
+        - principal.assignment.create on /organisation/{organisation_id}/project/{project_name}
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def RemoveGroupMembers(self, request, context):
+        """RemoveGroupMembers removes up to 100 principals from a group. Principals that are not members are reported.
+        Required Permissions:
+        - group.member.remove on /organisation/{organisation_id}/project/{project_name}/group/{name}
+        - principal.assignment.create on /organisation/{organisation_id}/project/{project_name}
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListGroupMembers(self, request, context):
+        """ListGroupMembers returns a group's members, ordered by principal ID.
+        Required Permissions:
+        - group.member.list on /organisation/{organisation_id}/project/{project_name}/group/{name}
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListGroupsForPrincipal(self, request, context):
+        """ListGroupsForPrincipal returns the groups a principal is a member of in a project, ordered by name.
+        Required Permissions:
+        - group.list on /organisation/{organisation_id}/project/{project_name}
+        - principal.assignment.list on /organisation/{organisation_id}/project/{project_name}/principal/{principal_id}
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_PermissionsServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -346,6 +543,66 @@ def add_PermissionsServiceServicer_to_server(servicer, server):
                     servicer.GetTotalRolesAndPermissionsForOrganisation,
                     request_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.GetTotalRolesAndPermissionsForOrganisationRequest.FromString,
                     response_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.GetTotalRolesAndPermissionsForOrganisationResponse.SerializeToString,
+            ),
+            'BatchCheck': grpc.unary_unary_rpc_method_handler(
+                    servicer.BatchCheck,
+                    request_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.BatchCheckRequest.FromString,
+                    response_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.BatchCheckResponse.SerializeToString,
+            ),
+            'ListAccess': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListAccess,
+                    request_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.ListAccessRequest.FromString,
+                    response_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.ListAccessResponse.SerializeToString,
+            ),
+            'ListPrincipalsWithAccess': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListPrincipalsWithAccess,
+                    request_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.ListPrincipalsWithAccessRequest.FromString,
+                    response_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.ListPrincipalsWithAccessResponse.SerializeToString,
+            ),
+            'CreateGroup': grpc.unary_unary_rpc_method_handler(
+                    servicer.CreateGroup,
+                    request_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.CreateGroupRequest.FromString,
+                    response_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.Group.SerializeToString,
+            ),
+            'GetGroup': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetGroup,
+                    request_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.GetGroupRequest.FromString,
+                    response_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.Group.SerializeToString,
+            ),
+            'UpdateGroup': grpc.unary_unary_rpc_method_handler(
+                    servicer.UpdateGroup,
+                    request_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.UpdateGroupRequest.FromString,
+                    response_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.Group.SerializeToString,
+            ),
+            'DeleteGroup': grpc.unary_unary_rpc_method_handler(
+                    servicer.DeleteGroup,
+                    request_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.DeleteGroupRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'ListGroups': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListGroups,
+                    request_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.ListGroupsRequest.FromString,
+                    response_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.ListGroupsResponse.SerializeToString,
+            ),
+            'AddGroupMembers': grpc.unary_unary_rpc_method_handler(
+                    servicer.AddGroupMembers,
+                    request_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.AddGroupMembersRequest.FromString,
+                    response_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.AddGroupMembersResponse.SerializeToString,
+            ),
+            'RemoveGroupMembers': grpc.unary_unary_rpc_method_handler(
+                    servicer.RemoveGroupMembers,
+                    request_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.RemoveGroupMembersRequest.FromString,
+                    response_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.RemoveGroupMembersResponse.SerializeToString,
+            ),
+            'ListGroupMembers': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListGroupMembers,
+                    request_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.ListGroupMembersRequest.FromString,
+                    response_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.ListGroupMembersResponse.SerializeToString,
+            ),
+            'ListGroupsForPrincipal': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListGroupsForPrincipal,
+                    request_deserializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.ListGroupsForPrincipalRequest.FromString,
+                    response_serializer=proto_dot_permissions_dot_v1_dot_permissions__pb2.ListGroupsForPrincipalResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -807,6 +1064,330 @@ class PermissionsService(object):
             '/permio.permissions.v1.PermissionsService/GetTotalRolesAndPermissionsForOrganisation',
             proto_dot_permissions_dot_v1_dot_permissions__pb2.GetTotalRolesAndPermissionsForOrganisationRequest.SerializeToString,
             proto_dot_permissions_dot_v1_dot_permissions__pb2.GetTotalRolesAndPermissionsForOrganisationResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def BatchCheck(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/permio.permissions.v1.PermissionsService/BatchCheck',
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.BatchCheckRequest.SerializeToString,
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.BatchCheckResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListAccess(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/permio.permissions.v1.PermissionsService/ListAccess',
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.ListAccessRequest.SerializeToString,
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.ListAccessResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListPrincipalsWithAccess(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/permio.permissions.v1.PermissionsService/ListPrincipalsWithAccess',
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.ListPrincipalsWithAccessRequest.SerializeToString,
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.ListPrincipalsWithAccessResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def CreateGroup(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/permio.permissions.v1.PermissionsService/CreateGroup',
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.CreateGroupRequest.SerializeToString,
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.Group.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetGroup(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/permio.permissions.v1.PermissionsService/GetGroup',
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.GetGroupRequest.SerializeToString,
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.Group.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def UpdateGroup(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/permio.permissions.v1.PermissionsService/UpdateGroup',
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.UpdateGroupRequest.SerializeToString,
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.Group.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DeleteGroup(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/permio.permissions.v1.PermissionsService/DeleteGroup',
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.DeleteGroupRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListGroups(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/permio.permissions.v1.PermissionsService/ListGroups',
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.ListGroupsRequest.SerializeToString,
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.ListGroupsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def AddGroupMembers(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/permio.permissions.v1.PermissionsService/AddGroupMembers',
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.AddGroupMembersRequest.SerializeToString,
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.AddGroupMembersResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def RemoveGroupMembers(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/permio.permissions.v1.PermissionsService/RemoveGroupMembers',
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.RemoveGroupMembersRequest.SerializeToString,
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.RemoveGroupMembersResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListGroupMembers(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/permio.permissions.v1.PermissionsService/ListGroupMembers',
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.ListGroupMembersRequest.SerializeToString,
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.ListGroupMembersResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListGroupsForPrincipal(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/permio.permissions.v1.PermissionsService/ListGroupsForPrincipal',
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.ListGroupsForPrincipalRequest.SerializeToString,
+            proto_dot_permissions_dot_v1_dot_permissions__pb2.ListGroupsForPrincipalResponse.FromString,
             options,
             channel_credentials,
             insecure,

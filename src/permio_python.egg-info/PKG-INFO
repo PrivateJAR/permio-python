@@ -1,30 +1,55 @@
 Metadata-Version: 2.4
 Name: permio-python
-Version: 0.0.15
-Summary: Generated Protocol Buffer Python code for Permio
-Author-email: Permio <support@example.com>
-License: Apache-2.0
-Project-URL: Homepage, https://github.com/PrivateJAR/permio-python
+Version: 0.0.16
+Summary: Generated Protocol Buffer and gRPC client code for the perms.io API
+Author-email: "perms.io" <support@perms.io>
+License-Expression: Apache-2.0
+Project-URL: Homepage, https://perms.io
 Project-URL: Source, https://github.com/PrivateJAR/permio-python
 Classifier: Programming Language :: Python :: 3
-Classifier: License :: OSI Approved :: Apache Software License
 Classifier: Operating System :: OS Independent
-Requires-Python: >=3.8
+Requires-Python: >=3.9
 Description-Content-Type: text/markdown
+Requires-Dist: protobuf<8,>=6.33.5
+Requires-Dist: grpcio<2,>=1.76.0
+Requires-Dist: googleapis-common-protos<2,>=1.70.0
 
 # Permio Python
 
-Generated Protocol Buffer Python code for Permio.
+Generated Protocol Buffer and gRPC client code for the [perms.io](https://perms.io) API.
+
+This repository is generated from `PrivateJAR/proto` on every release. Do not edit it by hand.
 
 ## Installation
 
-Collecting git+https://github.com/PrivateJAR/permio-python@v0.0.15
-  Cloning https://github.com/PrivateJAR/permio-python (to revision v0.0.15) to /tmp/pip-req-build-b0ps59mn
+```bash
+pip install "git+https://github.com/PrivateJAR/permio-python@v0.0.16"
+```
 
 ## Usage
 
+```python
+import grpc
 
+from permio.permissions.v1 import permissions_pb2, permissions_pb2_grpc
+
+channel = grpc.secure_channel("api.perms.io:443", grpc.ssl_channel_credentials())
+client = permissions_pb2_grpc.PermissionsServiceStub(channel)
+
+res = client.Check(
+    permissions_pb2.CheckPermissionRequest(
+        project_name="my-project",
+        principal_id="user-123",
+        resource_uris=["/documents/42"],
+        permissions=["document.read"],
+    ),
+    metadata=[("authorization", "Bearer <your perms.io API key>")],
+)
+print(res.passed)
+```
+
+Modules: `permio.permissions.v1`, `permio.organisation.v1`, `permio.pagination.v1`.
 
 ## Version
 
-v0.0.15
+v0.0.16

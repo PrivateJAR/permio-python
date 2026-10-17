@@ -1,18 +1,28 @@
 import datetime
 
 from google.api import annotations_pb2 as _annotations_pb2
-from validate import validate_pb2 as _validate_pb2
+from permio.validate import validate_pb2 as _validate_pb2
 from google.protobuf import empty_pb2 as _empty_pb2
 from google.protobuf import timestamp_pb2 as _timestamp_pb2
-from proto.permissions.v1 import permissions_pb2 as _permissions_pb2
-from proto.pagination.v1 import pagination_pb2 as _pagination_pb2
+from permio.permissions.v1 import permissions_pb2 as _permissions_pb2
+from permio.pagination.v1 import pagination_pb2 as _pagination_pb2
 from google.protobuf.internal import containers as _containers
+from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from collections.abc import Iterable as _Iterable, Mapping as _Mapping
 from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
+
+class APIKeyAccess(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    API_KEY_ACCESS_UNSPECIFIED: _ClassVar[APIKeyAccess]
+    API_KEY_ACCESS_CHECK: _ClassVar[APIKeyAccess]
+    API_KEY_ACCESS_FULL: _ClassVar[APIKeyAccess]
+API_KEY_ACCESS_UNSPECIFIED: APIKeyAccess
+API_KEY_ACCESS_CHECK: APIKeyAccess
+API_KEY_ACCESS_FULL: APIKeyAccess
 
 class RemoveUserFromOrganisationRequest(_message.Message):
     __slots__ = ("organisation_id", "user_id")
@@ -252,28 +262,32 @@ class GetUsersOrganisationRequest(_message.Message):
     def __init__(self, user_id: _Optional[str] = ...) -> None: ...
 
 class CreateAPIKeyRequest(_message.Message):
-    __slots__ = ("organisation_id", "project_name", "name")
+    __slots__ = ("organisation_id", "project_name", "name", "access")
     ORGANISATION_ID_FIELD_NUMBER: _ClassVar[int]
     PROJECT_NAME_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
+    ACCESS_FIELD_NUMBER: _ClassVar[int]
     organisation_id: str
     project_name: str
     name: str
-    def __init__(self, organisation_id: _Optional[str] = ..., project_name: _Optional[str] = ..., name: _Optional[str] = ...) -> None: ...
+    access: APIKeyAccess
+    def __init__(self, organisation_id: _Optional[str] = ..., project_name: _Optional[str] = ..., name: _Optional[str] = ..., access: _Optional[_Union[APIKeyAccess, str]] = ...) -> None: ...
 
 class APIKey(_message.Message):
-    __slots__ = ("id", "name", "key", "created_at", "invalidated")
+    __slots__ = ("id", "name", "key", "created_at", "invalidated", "access")
     ID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     KEY_FIELD_NUMBER: _ClassVar[int]
     CREATED_AT_FIELD_NUMBER: _ClassVar[int]
     INVALIDATED_FIELD_NUMBER: _ClassVar[int]
+    ACCESS_FIELD_NUMBER: _ClassVar[int]
     id: str
     name: str
     key: str
     created_at: _timestamp_pb2.Timestamp
     invalidated: bool
-    def __init__(self, id: _Optional[str] = ..., name: _Optional[str] = ..., key: _Optional[str] = ..., created_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., invalidated: _Optional[bool] = ...) -> None: ...
+    access: APIKeyAccess
+    def __init__(self, id: _Optional[str] = ..., name: _Optional[str] = ..., key: _Optional[str] = ..., created_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., invalidated: _Optional[bool] = ..., access: _Optional[_Union[APIKeyAccess, str]] = ...) -> None: ...
 
 class CreateAPIKeyResponse(_message.Message):
     __slots__ = ("api_key",)

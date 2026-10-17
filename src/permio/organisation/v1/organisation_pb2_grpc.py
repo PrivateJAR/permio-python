@@ -3,7 +3,7 @@
 import grpc
 
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
-from proto.organisation.v1 import organisation_pb2 as proto_dot_organisation_dot_v1_dot_organisation__pb2
+from permio.organisation.v1 import organisation_pb2 as proto_dot_organisation_dot_v1_dot_organisation__pb2
 
 
 class OrganisationServiceStub(object):
