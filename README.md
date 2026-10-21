@@ -7,7 +7,7 @@ This repository is generated from `PrivateJAR/proto` on every release. Do not ed
 ## Installation
 
 ```bash
-pip install "git+https://github.com/PrivateJAR/permio-python@v0.0.16"
+pip install "git+https://github.com/PrivateJAR/permio-python@v0.0.17"
 ```
 
 ## Usage
@@ -36,4 +36,4 @@ Modules: `permio.permissions.v1`, `permio.organisation.v1`, `permio.pagination.v
 
 ## Version
 
-v0.0.16
+v0.0.17

@@ -27,6 +27,19 @@ class AccessGrantMatch(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     ACCESS_GRANT_MATCH_EXACT: _ClassVar[AccessGrantMatch]
     ACCESS_GRANT_MATCH_ANCESTOR: _ClassVar[AccessGrantMatch]
     ACCESS_GRANT_MATCH_WILDCARD: _ClassVar[AccessGrantMatch]
+
+class PrincipalType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    PRINCIPAL_TYPE_UNSPECIFIED: _ClassVar[PrincipalType]
+    PRINCIPAL_TYPE_USER: _ClassVar[PrincipalType]
+    PRINCIPAL_TYPE_API_KEY: _ClassVar[PrincipalType]
+    PRINCIPAL_TYPE_SERVICE_ACCOUNT: _ClassVar[PrincipalType]
+
+class APIKeyAccess(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    API_KEY_ACCESS_UNSPECIFIED: _ClassVar[APIKeyAccess]
+    API_KEY_ACCESS_CHECK: _ClassVar[APIKeyAccess]
+    API_KEY_ACCESS_FULL: _ClassVar[APIKeyAccess]
 ACCESS_SCOPE_KIND_UNSPECIFIED: AccessScopeKind
 ACCESS_SCOPE_KIND_EXACT: AccessScopeKind
 ACCESS_SCOPE_KIND_SUBTREE: AccessScopeKind
@@ -35,6 +48,13 @@ ACCESS_GRANT_MATCH_UNSPECIFIED: AccessGrantMatch
 ACCESS_GRANT_MATCH_EXACT: AccessGrantMatch
 ACCESS_GRANT_MATCH_ANCESTOR: AccessGrantMatch
 ACCESS_GRANT_MATCH_WILDCARD: AccessGrantMatch
+PRINCIPAL_TYPE_UNSPECIFIED: PrincipalType
+PRINCIPAL_TYPE_USER: PrincipalType
+PRINCIPAL_TYPE_API_KEY: PrincipalType
+PRINCIPAL_TYPE_SERVICE_ACCOUNT: PrincipalType
+API_KEY_ACCESS_UNSPECIFIED: APIKeyAccess
+API_KEY_ACCESS_CHECK: APIKeyAccess
+API_KEY_ACCESS_FULL: APIKeyAccess
 
 class GetTotalRolesAndPermissionsForOrganisationRequest(_message.Message):
     __slots__ = ("organisation_id",)
@@ -619,3 +639,23 @@ class ListGroupsForPrincipalResponse(_message.Message):
     groups: _containers.RepeatedCompositeFieldContainer[Group]
     pagination: _pagination_pb2.PaginationResponse
     def __init__(self, groups: _Optional[_Iterable[_Union[Group, _Mapping]]] = ..., pagination: _Optional[_Union[_pagination_pb2.PaginationResponse, _Mapping]] = ...) -> None: ...
+
+class WhoAmIRequest(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
+class WhoAmIResponse(_message.Message):
+    __slots__ = ("principal_id", "organisation_id", "principal_type", "project_name", "api_key_access", "email")
+    PRINCIPAL_ID_FIELD_NUMBER: _ClassVar[int]
+    ORGANISATION_ID_FIELD_NUMBER: _ClassVar[int]
+    PRINCIPAL_TYPE_FIELD_NUMBER: _ClassVar[int]
+    PROJECT_NAME_FIELD_NUMBER: _ClassVar[int]
+    API_KEY_ACCESS_FIELD_NUMBER: _ClassVar[int]
+    EMAIL_FIELD_NUMBER: _ClassVar[int]
+    principal_id: str
+    organisation_id: str
+    principal_type: PrincipalType
+    project_name: str
+    api_key_access: APIKeyAccess
+    email: str
+    def __init__(self, principal_id: _Optional[str] = ..., organisation_id: _Optional[str] = ..., principal_type: _Optional[_Union[PrincipalType, str]] = ..., project_name: _Optional[str] = ..., api_key_access: _Optional[_Union[APIKeyAccess, str]] = ..., email: _Optional[str] = ...) -> None: ...

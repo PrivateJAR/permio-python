@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "permio-python"
-version = "0.0.16"
+version = "0.0.17"
 description = "Generated Protocol Buffer and gRPC client code for the perms.io API"
 readme = "README.md"
 license = "Apache-2.0"

@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: permio-python
-Version: 0.0.16
+Version: 0.0.17
 Summary: Generated Protocol Buffer and gRPC client code for the perms.io API
 Author-email: "perms.io" <support@perms.io>
 License-Expression: Apache-2.0
@@ -23,7 +23,7 @@ This repository is generated from `PrivateJAR/proto` on every release. Do not ed
 ## Installation
 
 ```bash
-pip install "git+https://github.com/PrivateJAR/permio-python@v0.0.16"
+pip install "git+https://github.com/PrivateJAR/permio-python@v0.0.17"
 ```
 
 ## Usage
@@ -52,4 +52,4 @@ Modules: `permio.permissions.v1`, `permio.organisation.v1`, `permio.pagination.v
 
 ## Version
 
-v0.0.16
+v0.0.17
