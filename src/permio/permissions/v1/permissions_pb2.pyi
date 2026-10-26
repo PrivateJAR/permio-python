@@ -57,18 +57,22 @@ API_KEY_ACCESS_CHECK: APIKeyAccess
 API_KEY_ACCESS_FULL: APIKeyAccess
 
 class GetTotalRolesAndPermissionsForOrganisationRequest(_message.Message):
-    __slots__ = ("organisation_id",)
+    __slots__ = ("organisation_id", "project")
     ORGANISATION_ID_FIELD_NUMBER: _ClassVar[int]
+    PROJECT_FIELD_NUMBER: _ClassVar[int]
     organisation_id: str
-    def __init__(self, organisation_id: _Optional[str] = ...) -> None: ...
+    project: str
+    def __init__(self, organisation_id: _Optional[str] = ..., project: _Optional[str] = ...) -> None: ...
 
 class GetTotalRolesAndPermissionsForOrganisationResponse(_message.Message):
-    __slots__ = ("total_roles", "total_permissions")
+    __slots__ = ("total_roles", "total_permissions", "total_principals")
     TOTAL_ROLES_FIELD_NUMBER: _ClassVar[int]
     TOTAL_PERMISSIONS_FIELD_NUMBER: _ClassVar[int]
+    TOTAL_PRINCIPALS_FIELD_NUMBER: _ClassVar[int]
     total_roles: int
     total_permissions: int
-    def __init__(self, total_roles: _Optional[int] = ..., total_permissions: _Optional[int] = ...) -> None: ...
+    total_principals: int
+    def __init__(self, total_roles: _Optional[int] = ..., total_permissions: _Optional[int] = ..., total_principals: _Optional[int] = ...) -> None: ...
 
 class ListRolesRequest(_message.Message):
     __slots__ = ("project_name", "pagination", "search")

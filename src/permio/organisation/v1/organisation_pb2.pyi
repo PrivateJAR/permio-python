@@ -33,10 +33,12 @@ class RemoveUserFromOrganisationRequest(_message.Message):
     def __init__(self, organisation_id: _Optional[str] = ..., user_id: _Optional[str] = ...) -> None: ...
 
 class GetOrganisationDashboardRequest(_message.Message):
-    __slots__ = ("organisation_id",)
+    __slots__ = ("organisation_id", "project")
     ORGANISATION_ID_FIELD_NUMBER: _ClassVar[int]
+    PROJECT_FIELD_NUMBER: _ClassVar[int]
     organisation_id: str
-    def __init__(self, organisation_id: _Optional[str] = ...) -> None: ...
+    project: str
+    def __init__(self, organisation_id: _Optional[str] = ..., project: _Optional[str] = ...) -> None: ...
 
 class GetOrganisationDashboardResponse(_message.Message):
     __slots__ = ("total_roles", "total_permissions", "total_principals", "total_users")
