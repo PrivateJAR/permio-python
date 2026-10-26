@@ -1,0 +1,60 @@
+name: Release
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    steps:
+      - uses: useblacksmith/checkout@v1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Check the tag matches the package version
+        run: |
+          version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/permio/_version.py)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match src/permio/_version.py ($version)"
+            exit 1
+          fi
+      - run: python -m pip install -e ".[test]" build twine
+      - run: python -m pytest -q
+      - run: python -m build
+      - run: python -m twine check --strict dist/*
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  # Publishes to PyPI with trusted publishing (OIDC; no API token). The owner
+  # must first add a (pending) trusted publisher on PyPI for project "permio":
+  # owner PrivateJAR, repository permio-python, workflow release.yml,
+  # environment pypi.
+  #
+  # This one job runs on a GitHub-hosted runner on purpose. PyPI trusted
+  # publishing is OIDC-based and may work from self-hosted runners, but
+  # pypa/gh-action-pypi-publish only supports self-hosted runners on a best
+  # effort basis and recommends building elsewhere and publishing from a
+  # GitHub-provided runner. The repository is public, so GitHub-hosted minutes
+  # are free here.
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/permio/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
