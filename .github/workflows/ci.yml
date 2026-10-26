@@ -1,0 +1,116 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# The org has no GitHub-hosted minutes: every job runs on Blacksmith.
+# actions/setup-python's pip cache is backed by Blacksmith's actions/cache.
+jobs:
+  lint:
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    steps:
+      - uses: useblacksmith/checkout@v1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: python -m pip install -e ".[dev]"
+      - run: ruff check src tests
+      - run: ruff format --check src tests
+      - name: Type-check the hand-written package (mypy --strict; generated code excluded)
+        run: mypy
+
+  test:
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.13"]
+    steps:
+      - uses: useblacksmith/checkout@v1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: python -m pip install -e ".[test]"
+      # Unit tests run against an in-process gRPC server. tests/test_live.py
+      # skips itself here because PERMIO_API_KEY is not set.
+      - run: python -m pytest -v
+
+  build:
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    steps:
+      - uses: useblacksmith/checkout@v1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: python -m pip install build twine
+      - run: python -m build
+      - run: python -m twine check --strict dist/*
+      - name: Install the wheel into a clean venv and import it
+        run: |
+          python -m venv "$RUNNER_TEMP/wheel-check"
+          "$RUNNER_TEMP/wheel-check/bin/pip" install dist/*.whl
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/wheel-check/bin/python" -I -c "
+          import permio, permio.raw
+          from permio import Permio, AsyncPermio
+          from permio.permissions.v1 import permissions_pb2, permissions_pb2_grpc
+          from permio.organisation.v1 import organisation_pb2, organisation_pb2_grpc
+          Permio('perms_0123456789ABCDEFGHIJKLMNOPQRSTUV1ggZdL', base_url='http://127.0.0.1:1').close()
+          print('permio', permio.__version__, 'imports OK')
+          "
+          ls "$RUNNER_TEMP"/wheel-check/lib/python*/site-packages/permio/py.typed
+
+  # Runs tests/test_live.py against the dev API (DEV_BASE_URL) when the
+  # PERMIO_DEV_API_KEY secret is available, and is skipped otherwise (for
+  # example on pull requests from forks). The test writes fixed sdk-it-python-*
+  # IDs, so runs are serialised.
+  integration:
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    concurrency:
+      group: permio-python-integration
+      cancel-in-progress: false
+    steps:
+      - name: Check for the dev API key
+        id: key
+        env:
+          HAS_KEY: ${{ secrets.PERMIO_DEV_API_KEY != '' }}
+        run: |
+          if [ "$HAS_KEY" != "true" ]; then
+            echo "::notice::PERMIO_DEV_API_KEY is not available; skipping the integration test."
+          fi
+          echo "enabled=$HAS_KEY" >> "$GITHUB_OUTPUT"
+      - uses: useblacksmith/checkout@v1
+        if: steps.key.outputs.enabled == 'true'
+      - uses: actions/setup-python@v6
+        if: steps.key.outputs.enabled == 'true'
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - if: steps.key.outputs.enabled == 'true'
+        run: python -m pip install -e ".[test]"
+      - name: Integration test against the dev API
+        if: steps.key.outputs.enabled == 'true'
+        env:
+          PERMIO_API_KEY: ${{ secrets.PERMIO_DEV_API_KEY }}
+        run: |
+          python -m pytest -v -rs tests/test_live.py --junitxml=live.xml
+          # Fail if the suite was skipped rather than run.
+          python - <<'PY'
+          import sys, xml.etree.ElementTree as ET
+          suite = ET.parse("live.xml").getroot().find("testsuite")
+          ran = int(suite.get("tests")) - int(suite.get("skipped"))
+          if ran <= 0:
+              sys.exit("integration test did not run")
+          print(f"{ran} live tests ran")
+          PY
