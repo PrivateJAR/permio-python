@@ -16,7 +16,7 @@ API_KEY_LENGTH = len(_PREFIX) + _RANDOM_LENGTH + _CHECKSUM_LENGTH
 _ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 _ALPHABET_SET = frozenset(_ALPHABET)
 
-_JWT = re.compile(r"^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$")
+_JWT = re.compile(r"[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+")
 
 
 def _checksum(body: str) -> str:
@@ -41,6 +41,13 @@ def validate_api_key(key: object) -> str:
     """
     if not isinstance(key, str) or key == "":
         raise PermioConfigError("permio: api_key is required (or set PERMIO_API_KEY)")
+    if key != key.strip():
+        # Usually a newline read from a file or secret store. Not stripped
+        # silently: the key is used exactly as given, so say what is wrong.
+        raise PermioConfigError(
+            "permio: malformed API key (leading or trailing whitespace, e.g. a newline "
+            "from a file; strip it before passing it in)"
+        )
     if key.startswith(_PREFIX):
         if len(key) != API_KEY_LENGTH:
             raise PermioConfigError(
@@ -57,7 +64,7 @@ def validate_api_key(key: object) -> str:
                 "permio: API key checksum mismatch; check it was copied correctly"
             )
         return "opaque"
-    if _JWT.match(key):
+    if _JWT.fullmatch(key):
         return "jwt"
     raise PermioConfigError(
         'permio: malformed API key (expected a "perms_" key from the dashboard, or a legacy JWT key)'

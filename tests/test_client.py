@@ -83,6 +83,14 @@ class TestCheck:
         assert err.value.code is None
         assert "docs.write on /docs/1" in str(err.value)
 
+    def test_check_any_fails_closed_without_missing_list(
+        self, client: Permio, rec: Recorder
+    ) -> None:
+        # passed=false but nothing listed as missing: deny rather than allow.
+        rec.on("Check", lambda req, ctx: passed(False))
+        assert client.check_any("alice", ["docs.read", "docs.write"], "/docs/1") is False
+        assert client.check_any("alice", "docs.read", "/docs/1") is False
+
     def test_assert_allowed_passes(self, client: Permio, rec: Recorder) -> None:
         rec.on("Check", lambda req, ctx: passed())
         client.assert_allowed("alice", "docs.read", "/docs/1")
@@ -175,9 +183,14 @@ class TestPagination:
         assert [r.pagination.cursor for r in reqs] == ["", "c-1", "c-2"]
         assert all(r.pagination.limit == 2 and r.search == "x" for r in reqs)
 
-    def test_stops_on_repeated_cursor(self, client: Permio, rec: Recorder) -> None:
+    def test_raises_on_repeated_cursor(self, client: Permio, rec: Recorder) -> None:
         self.paged(rec, [["a"], ["b"]], ["c-1", "c-1"])
-        assert [p.name for p in client.list_permissions()] == ["a", "b"]
+        names: List[str] = []
+        with pytest.raises(PermioError, match="pagination cursor"):
+            for p in client.list_permissions():
+                names.append(p.name)
+        # Items already received are yielded; the listing then fails loudly.
+        assert names == ["a", "b"]
         assert rec.count("ListPermissions") == 2
 
     def test_page_size_is_clamped_and_lazy(self, client: Permio, rec: Recorder) -> None:

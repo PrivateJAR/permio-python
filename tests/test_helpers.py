@@ -67,6 +67,27 @@ class TestApiKey:
             validate_api_key(key)
         assert not is_valid_api_key(key)
 
+    @pytest.mark.parametrize(
+        "key",
+        [
+            VALID_KEY + "\n",
+            VALID_KEY + "\r\n",
+            " " + VALID_KEY,
+            "\t" + VALID_KEY + " ",
+            "aaa.bbb.ccc\n",
+            " aaa.bbb.ccc",
+        ],
+    )
+    def test_rejects_surrounding_whitespace(self, key: str) -> None:
+        # Not stripped silently: a newline from a file or secret is a config error.
+        with pytest.raises(PermioConfigError, match="whitespace"):
+            validate_api_key(key)
+        assert not is_valid_api_key(key)
+
+    def test_jwt_rejects_trailing_newline_and_extra_parts(self) -> None:
+        for key in ["aaa.bbb.ccc.ddd", "aaa.bbb", "aaa.bbb.c\nc"]:
+            assert not is_valid_api_key(key)
+
     def test_client_validates_key_and_reads_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         with pytest.raises(PermioConfigError):
             Permio("perms_typo", base_url="http://127.0.0.1:1")
@@ -113,7 +134,7 @@ class TestResource:
 
     def test_group(self) -> None:
         assert group("editors") == "group:editors"
-        for bad in ["", "Editors", "a_b", "x" * 65]:
+        for bad in ["", "Editors", "a_b", "x" * 65, "editors\n", "editors\r\n", " editors"]:
             with pytest.raises(PermioValidationError):
                 group(bad)
 
@@ -223,3 +244,51 @@ class TestErrorsAndRetryPolicy:
     def test_parse_target_rejects(self, url: str) -> None:
         with pytest.raises(PermioConfigError):
             parse_target(url)
+
+
+class TestLiveGuard:
+    """tests/test_live.py only runs against the dev API and local/test hosts."""
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://dev-api.perms.io",
+            "https://DEV-API.perms.io:443/",
+            "dev-api.perms.io:443",
+            "dev-api.perms.io.",
+            "http://localhost:8080",
+            "http://127.0.0.1:50051",
+            "http://[::1]:50051",
+            "http://permio.localhost:8080",
+            "https://api.permio.test",
+        ],
+    )
+    def test_allows(self, url: str) -> None:
+        from .test_live import is_allowed_target
+
+        assert is_allowed_target(url)
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://api.perms.io",
+            "https://API.PERMS.IO",
+            "HTTPS://api.perms.io:443/",
+            "api.perms.io",
+            "api.perms.io:443",
+            "https://api.perms.io./",
+            "https://temp-api.perms.io",
+            "https://dev-api.perms.io.evil.com",
+            "https://dev-api.perms.io@api.perms.io",
+            "https://evil.com\\@dev-api.perms.io",
+            "https://localhost.example.com",
+            "https://test",
+            "https://.test",
+            "https://example.com/x.test",
+            "",
+        ],
+    )
+    def test_refuses(self, url: str) -> None:
+        from .test_live import is_allowed_target
+
+        assert not is_allowed_target(url)

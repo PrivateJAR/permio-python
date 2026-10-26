@@ -28,7 +28,7 @@ from ._core import (
     apaginate,
     require_principal,
 )
-from ._errors import PermioDeniedError, PermioValidationError
+from ._errors import PermioConfigError, PermioDeniedError, PermioValidationError
 from ._transport import (
     ORGANISATION_SERVICE,
     PERMISSIONS_SERVICE,
@@ -42,6 +42,9 @@ from ._transport import (
 from .organisation.v1 import organisation_pb2_grpc
 from .permissions.v1 import permissions_pb2 as pb
 from .permissions.v1 import permissions_pb2_grpc
+
+BATCH_CHECK_CONCURRENCY = 4
+"""Most ``BatchCheck`` calls :meth:`AsyncPermio.batch_check` has in flight at once."""
 
 
 class AsyncPermio:
@@ -88,29 +91,25 @@ class AsyncPermio:
         channel_options: Optional[Sequence[Tuple[str, Any]]] = None,
     ) -> None:
         self._config = ClientConfig(api_key, base_url, project, timeout, retries)
-        if channel is None:
-            target, secure = parse_target(self._config.base_url)
-            options = _channel_options(channel_options)
-            channel = (
-                grpc.aio.secure_channel(target, grpc.ssl_channel_credentials(), options=options)
-                if secure
-                else grpc.aio.insecure_channel(target, options=options)
-            )
-            self._owns_channel = True
-        else:
-            self._owns_channel = False
-        self.channel: grpc.aio.Channel = channel
-        """The underlying gRPC channel."""
+        # The client's own channel is created lazily, inside the running event
+        # loop: a grpc.aio channel belongs to the loop it was created in, so
+        # creating it here would tie the client to whatever loop (if any)
+        # exists at construction time.
+        self._channel: Optional[grpc.aio.Channel] = channel
+        self._owns_channel = channel is None
+        self._channel_options = _channel_options(channel_options)
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._stubs: Dict[str, Any] = {}
         self._invoker = AsyncInvoker(self._config.api_key, self._config.timeout, self._config.retry)
         self.permissions = RawService(
             PERMISSIONS_SERVICE,
-            _stub(permissions_pb2_grpc.PermissionsServiceStub, channel),
+            _LazyStub(self, permissions_pb2_grpc.PermissionsServiceStub),
             self._invoker,
         )
         """Raw ``PermissionsService`` client with auth, timeouts, retries and typed errors applied."""
         self.organisations = RawService(
             ORGANISATION_SERVICE,
-            _stub(organisation_pb2_grpc.OrganisationServiceStub, channel),
+            _LazyStub(self, organisation_pb2_grpc.OrganisationServiceStub),
             self._invoker,
         )
         """Raw ``OrganisationService`` client with auth, timeouts, retries and typed errors applied."""
@@ -136,12 +135,70 @@ class AsyncPermio:
 
     # -- lifecycle -----------------------------------------------------------
 
+    @property
+    def channel(self) -> grpc.aio.Channel:
+        """The underlying gRPC channel.
+
+        The client's own channel is opened on first use (or by ``async with``),
+        in the running event loop, so reading this outside a running loop
+        raises :class:`PermioConfigError` until then.
+        """
+        return self._get_channel()
+
+    def _get_channel(self) -> grpc.aio.Channel:
+        if not self._owns_channel:
+            assert self._channel is not None
+            return self._channel
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            raise PermioConfigError(
+                "permio: AsyncPermio opens its channel inside a running event loop; "
+                "call it from a coroutine"
+            ) from None
+        if self._channel is None:
+            target, secure = parse_target(self._config.base_url)
+            options = self._channel_options
+            self._channel = (
+                grpc.aio.secure_channel(target, grpc.ssl_channel_credentials(), options=options)
+                if secure
+                else grpc.aio.insecure_channel(target, options=options)
+            )
+            self._loop = loop
+            self._stubs = {}
+        elif self._loop is not loop:
+            raise PermioConfigError(
+                "permio: this AsyncPermio is in use by another event loop (each asyncio.run() "
+                "starts a new one); await close() (or use `async with`) before using it from "
+                "a new loop, or create one client per event loop"
+            )
+        return self._channel
+
+    def _stub_for(self, cls: Any) -> Any:
+        channel = self._get_channel()
+        key = cls.__name__
+        stub = self._stubs.get(key)
+        if stub is None:
+            stub = self._stubs[key] = _stub(cls, channel)
+        return stub
+
     async def close(self) -> None:
-        """Closes the channel, if the client created it."""
-        if self._owns_channel:
-            await self.channel.close()
+        """Closes the channel, if the client created and opened it.
+
+        Safe to call more than once, and on a client that never made a call.
+        After closing, the client can be used again (for example from a later
+        ``asyncio.run()``); it opens a new channel in that loop.
+        """
+        if not self._owns_channel:
+            return
+        channel, self._channel = self._channel, None
+        self._loop = None
+        self._stubs = {}
+        if channel is not None:
+            await channel.close()
 
     async def __aenter__(self) -> AsyncPermio:
+        self._get_channel()
         return self
 
     async def __aexit__(
@@ -280,11 +337,20 @@ class AsyncPermio:
         timeout: Optional[float] = None,
         metadata: MetadataArg = None,
     ) -> List[BatchCheckEntry]:
-        """Like :meth:`batch_check`, but one entry per resource with the missing permissions."""
+        """Like :meth:`batch_check`, but one entry per resource with the missing permissions.
+
+        More than 100 resources are split into ``BatchCheck`` calls of 100, with
+        at most 4 in flight at once.
+        """
         uris, requests = self._config.batch_requests(principal, permission, resources, project)
-        responses = await asyncio.gather(
-            *(self._call("BatchCheck", r, timeout, metadata) for r in requests)
-        )
+        # Chunks of 100 run concurrently, but at most BATCH_CHECK_CONCURRENCY at a time.
+        limit = asyncio.Semaphore(BATCH_CHECK_CONCURRENCY)
+
+        async def send(req: pb.BatchCheckRequest) -> Any:
+            async with limit:
+                return await self._call("BatchCheck", req, timeout, metadata)
+
+        responses = await asyncio.gather(*(send(r) for r in requests))
         return self._config.batch_entries(uris, responses)
 
     # -- access queries ------------------------------------------------------
@@ -745,3 +811,35 @@ def _channel_options(extra: Optional[Sequence[Tuple[str, Any]]]) -> List[Tuple[s
 def _stub(cls: Any, channel: Any) -> Any:
     # The generated *_pb2_grpc stubs are untyped.
     return cls(channel)
+
+
+class _LazyStub:
+    """Resolves a generated stub method on the client's channel when it is called.
+
+    ``RawService`` looks methods up on this object; the real stub (and the
+    channel under it) is only created when a call runs inside the event loop.
+    """
+
+    def __init__(self, client: AsyncPermio, cls: Any) -> None:
+        self._client = client
+        self._cls = cls
+        self._methods = frozenset(vars(cls(_NoChannel())))
+
+    def __getattr__(self, name: str) -> Any:
+        if name.startswith("_") or name not in self._methods:
+            raise AttributeError(name)
+        client, cls = self._client, self._cls
+
+        def call(request: Any, **kwargs: Any) -> Any:
+            return getattr(client._stub_for(cls), name)(request, **kwargs)
+
+        return call
+
+
+class _NoChannel:
+    """Stands in for a channel so a stub can be built to look up method names."""
+
+    def unary_unary(self, *args: Any, **kwargs: Any) -> None:
+        return None
+
+    unary_stream = stream_unary = stream_stream = unary_unary

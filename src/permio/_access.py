@@ -223,8 +223,10 @@ class AccessScopes:
         """The subtree scopes' URIs, for filtering a database by path prefix.
 
         A URI ``p`` here stands for ``p`` itself and everything below it, so
-        match ``path = p OR path LIKE p || '/%'``; a bare prefix match would also
-        match ``/docs/12`` for ``/docs/1``. Prefixes already covered by a shorter
+        match ``path = p OR starts_with(path, p || '/')`` (a literal prefix
+        test). Avoid ``LIKE p || '/%'``: ``_`` and ``%`` in ``p`` are ``LIKE``
+        wildcards. A bare prefix match would also match ``/docs/12`` for
+        ``/docs/1``. Prefixes already covered by a shorter
         one are dropped. Pattern scopes are not included: see ``patterns()``,
         ``to_regex()`` and ``has_patterns``.
         """

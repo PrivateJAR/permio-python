@@ -1,9 +1,10 @@
 """Integration test against a real deployment.
 
 Skipped unless PERMIO_API_KEY is set. PERMIO_BASE_URL defaults to the
-development API (DEV_BASE_URL), and the test refuses to run against production
-because it writes. The key needs full access to its project (PERMIO_PROJECT,
-default: the key's project from who_am_i)::
+development API (DEV_BASE_URL). Because it writes, it only runs against an
+allowlist of hosts: dev-api.perms.io, localhost, 127.0.0.1, ::1, *.localhost
+and *.test. The key needs full access to its project (PERMIO_PROJECT, default:
+the key's project from who_am_i)::
 
     PERMIO_API_KEY=perms_... pytest tests/test_live.py
 
@@ -16,8 +17,8 @@ from __future__ import annotations
 
 import contextlib
 import os
-import re
 from typing import Iterator
+from urllib.parse import urlsplit
 
 import pytest
 
@@ -35,15 +36,40 @@ API_KEY = os.environ.get("PERMIO_API_KEY", "")
 BASE_URL = os.environ.get("PERMIO_BASE_URL") or DEV_BASE_URL
 
 
-def is_prod(url: str) -> bool:
-    return bool(re.match(r"^(https?://)?(temp-)?api\.perms\.io(:443)?/?$", url.strip()))
+ALLOWED_HOSTS = frozenset({"dev-api.perms.io", "localhost", "127.0.0.1", "::1"})
+ALLOWED_SUFFIXES = (".localhost", ".test")
+
+
+def live_host(url: str) -> str:
+    """The lower-cased host ``url`` points at, parsed the way the client parses it."""
+    text = url.strip()
+    # Userinfo and backslashes make parsers disagree about the host; refuse them.
+    if any(c in text for c in "@\\") or any(c.isspace() for c in text):
+        return ""
+    if "://" not in text:
+        text = "https://" + text
+    try:
+        host = urlsplit(text).hostname or ""
+    except ValueError:
+        return ""
+    return host.rstrip(".")
+
+
+def is_allowed_target(url: str) -> bool:
+    """True only for the dev API and local/test hosts; everything else (prod included) is refused.
+
+    The suite writes and deletes data, so this is an allowlist, not a production denylist.
+    """
+    host = live_host(url)
+    return host in ALLOWED_HOSTS or (host.endswith(ALLOWED_SUFFIXES) and not host.startswith("."))
 
 
 pytestmark = [
     pytest.mark.live,
     pytest.mark.skipif(not API_KEY, reason="PERMIO_API_KEY is not set"),
     pytest.mark.skipif(
-        is_prod(BASE_URL), reason="refusing to run the live test against production"
+        not is_allowed_target(BASE_URL),
+        reason="refusing to run the live test against anything but the dev API or a local/test host",
     ),
 ]
 

@@ -16,13 +16,6 @@ hierarchical resource-URI RBAC.
 pip install permio
 ```
 
-> **Not on PyPI yet.** The package will be published by the first tagged
-> release (see [Releasing](#releasing)). Until then, install from GitHub:
->
-> ```bash
-> pip install "git+https://github.com/PrivateJAR/permio-python@main"
-> ```
-
 ## Quick start
 
 Create an API key in the [dashboard](https://perms.io) (keys look like `perms_`
@@ -50,6 +43,12 @@ async with AsyncPermio(project="my-app") as permio:
 
 Both clients are context managers; `close()` (or `await close()`) closes the
 gRPC channel. Create one client per process and share it.
+
+`AsyncPermio` opens its channel on first use, inside the running event loop, so
+it can be created at module level and used from `asyncio.run(main())`. A
+channel belongs to one event loop: to use the same client from a later loop
+(another `asyncio.run()`), `await close()` it (or leave an `async with` block)
+first; otherwise the call raises `PermioConfigError`.
 
 ## Configuration
 
@@ -130,7 +129,7 @@ checks the basic shape (leading `/`, no empty segments, no whitespace, at most
 ## Batch checks
 
 Check many resources at once; each is answered separately. More than 100 are
-split into several `BatchCheck` calls (sent in parallel by `AsyncPermio`).
+split into several `BatchCheck` calls (`AsyncPermio` sends up to 4 at once).
 
 ```python
 allowed = permio.batch_check("alice", "docs.read", [resource("docs", d.id) for d in docs])
@@ -189,10 +188,24 @@ access = permio.list_access("alice", "docs.read", "/docs")
 if access.covers_all:
     rows = all_docs()                       # no filter needed
 else:
-    prefixes = access.to_prefixes()          # ["/docs/1", "/docs/7"]: path = p OR path LIKE p || '/%'
+    prefixes = access.to_prefixes()          # ["/docs/1", "/docs/7"]
     regex = access.to_regex().pattern        # for PostgreSQL ~ or MongoDB $regex (covers _ patterns too)
 visible = [d for d in docs if access.allows(d.uri)]
 ```
+
+A prefix `p` stands for `p` itself and everything below it. Match it with a
+literal prefix test, for example in PostgreSQL:
+
+```sql
+WHERE path = :p OR starts_with(path, :p || '/')
+```
+
+Don't use `path LIKE p || '/%'`: `_` and `%` are wildcards in `LIKE`, so a
+prefix such as `/docs/a_b` would also match `/docs/axb/...` (and `_` is common
+in IDs). If your database has no `starts_with`, compare
+`left(path, length(:p) + 1) = :p || '/'` instead, or escape `\`, `%` and `_` in
+`p` and add an `ESCAPE` clause. A bare prefix test without the `/` would also
+match `/docs/12` for `/docs/1`.
 
 ## Who has access
 
@@ -205,7 +218,8 @@ for entry in permio.who_has_access("/docs/42", permission="docs.read", expand_gr
 ## Listing
 
 List helpers return iterators (async iterators on `AsyncPermio`) that fetch
-pages of up to 100 items as you go:
+pages of up to 100 items as you go. If the API ever repeats a page cursor, the
+iterator raises `PermioError` rather than looping or stopping early:
 
 ```python
 for p in permio.list_permissions(search="docs."): print(p.name)
@@ -345,10 +359,10 @@ repository secret exists, and skips it with a notice otherwise.
 `.github/workflows/release.yml` runs on `v*` tags: it checks the tag matches
 `src/permio/_version.py`, runs the tests, builds the sdist and wheel and
 publishes them to PyPI with [trusted publishing](https://docs.pypi.org/trusted-publishers/)
-(no API token). One-time setup on PyPI: add a pending trusted publisher for the
-project `permio` with owner `PrivateJAR`, repository `permio-python`, workflow
-`release.yml` and environment `pypi`, and create the `pypi` environment in the
-repository settings. Every CI job runs on Blacksmith except the publish step,
+(no API token). The trusted publisher is registered on PyPI for the project
+`permio` (owner `PrivateJAR`, repository `permio-python`, workflow
+`release.yml`, environment `pypi`), so pushing a tag that matches the version
+is all a release needs. Every CI job runs on Blacksmith except the publish step,
 which runs on a GitHub-hosted runner because `pypa/gh-action-pypi-publish` only
 supports self-hosted runners on a best-effort basis.
 
