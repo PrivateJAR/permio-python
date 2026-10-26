@@ -22,7 +22,7 @@ from typing import (
 
 from ._access import BatchCheckEntry, CheckResult, inconsistent_response
 from ._apikey import validate_api_key
-from ._errors import MissingPermission, PermioConfigError, PermioValidationError
+from ._errors import MissingPermission, PermioConfigError, PermioError, PermioValidationError
 from ._resource import GROUP_PRINCIPAL_PREFIX, assert_resource_uri, slug_of
 from ._transport import DEFAULT_BASE_URL, RetryOptions, normalize_retries
 from .pagination.v1 import pagination_pb2
@@ -106,12 +106,27 @@ def page_limit(page_size: Optional[int]) -> int:
     return max(1, min(MAX_PAGE_SIZE, int(page_size)))
 
 
+def check_cursor(cursor: str, seen: Set[str]) -> None:
+    """Records ``cursor``, raising if the API already returned it in this listing."""
+    if cursor in seen:
+        raise PermioError(
+            "permio: the API returned a pagination cursor it had already returned; "
+            "stopping the listing instead of looping or returning partial results"
+        )
+    seen.add(cursor)
+
+
 def paginate(
     fetch: Callable[[pagination_pb2.PaginationRequest], Any],
     items: Callable[[Any], Iterable[T]],
     page_size: Optional[int],
 ) -> Iterator[T]:
-    """Follows ``next_cursor`` until the API returns an empty (or repeated) one."""
+    """Follows ``next_cursor`` until the API returns an empty one.
+
+    Raises:
+        PermioError: if the API returns a cursor it already returned, which would
+            otherwise loop forever (or silently cut the listing short).
+    """
     limit = page_limit(page_size)
     cursor: Optional[str] = None
     seen: Set[str] = set()
@@ -122,10 +137,10 @@ def paginate(
         res = fetch(req)
         yield from items(res)
         nxt: str = res.pagination.next_cursor
-        # An empty cursor ends the listing. A repeated one would loop forever, so stop there too.
-        if not nxt or nxt in seen:
+        # An empty cursor ends the listing.
+        if not nxt:
             return
-        seen.add(nxt)
+        check_cursor(nxt, seen)
         cursor = nxt
 
 
@@ -146,9 +161,9 @@ async def apaginate(
         for item in items(res):
             yield item
         nxt: str = res.pagination.next_cursor
-        if not nxt or nxt in seen:
+        if not nxt:
             return
-        seen.add(nxt)
+        check_cursor(nxt, seen)
         cursor = nxt
 
 
@@ -215,6 +230,9 @@ class ClientConfig:
     def any_allowed(result: CheckResult, permission: Names) -> bool:
         if result.allowed:
             return True
+        if not result.missing:
+            # Denied without saying what is missing: fail closed.
+            return False
         wanted = pick(permission, "permission")
         return all(any(p not in m.permissions for p in wanted) for m in result.missing)
 

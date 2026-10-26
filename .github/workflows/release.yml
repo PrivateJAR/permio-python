@@ -33,10 +33,10 @@ jobs:
           path: dist/
           if-no-files-found: error
 
-  # Publishes to PyPI with trusted publishing (OIDC; no API token). The owner
-  # must first add a (pending) trusted publisher on PyPI for project "permio":
-  # owner PrivateJAR, repository permio-python, workflow release.yml,
-  # environment pypi.
+  # Publishes to PyPI with trusted publishing (OIDC; no API token). The trusted
+  # publisher is registered on PyPI for project "permio": owner PrivateJAR,
+  # repository permio-python, workflow release.yml, environment pypi. Renaming
+  # this file or the environment breaks publishing until PyPI is updated too.
   #
   # This one job runs on a GitHub-hosted runner on purpose. PyPI trusted
   # publishing is OIDC-based and may work from self-hosted runners, but

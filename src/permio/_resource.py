@@ -14,7 +14,7 @@ MAX_RESOURCE_URI_LENGTH = 2048
 GROUP_PRINCIPAL_PREFIX = "group:"
 """Prefix of the principal ID that grants to a group are made to."""
 
-_SLUG = re.compile(r"^[a-z0-9-]{1,64}$")
+_SLUG = re.compile(r"[a-z0-9-]{1,64}")
 # Whitespace (Python's \s is Unicode-aware; add the BOM, which JavaScript's \s
 # also covers) and C0/C1 control characters.
 _BAD_CHARS = re.compile("[\\s﻿\u0000-\u001f\u007f-\u009f]")
@@ -73,7 +73,7 @@ def assert_resource_uri(uri: object) -> None:
 
 
 def _assert_slug(slug: object) -> str:
-    if not isinstance(slug, str) or not _SLUG.match(slug):
+    if not isinstance(slug, str) or not _SLUG.fullmatch(slug):
         raise PermioValidationError(
             f"permio: invalid group name {slug!r}: use 1-64 lower-case letters, digits and hyphens"
         )

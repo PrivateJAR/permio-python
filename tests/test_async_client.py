@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 import time
 from typing import Any, AsyncIterator, List
 
@@ -14,7 +15,9 @@ from permio import (
     AsyncPermio,
     MissingPermission,
     PermioAuthError,
+    PermioConfigError,
     PermioDeniedError,
+    PermioError,
     PermioRateLimitError,
     PermioTimeoutError,
     PermioUnavailableError,
@@ -24,6 +27,10 @@ from permio import (
 from permio.permissions.v1 import permissions_pb2 as pb
 
 from .conftest import FAST_RETRIES, VALID_KEY, Abort, FakeServer, Recorder, retry_info_trailer
+
+
+def allow_check(rec: Recorder) -> None:
+    rec.on("Check", lambda req, ctx: pb.CheckPermissionResponse(passed=True))
 
 
 @pytest.fixture
@@ -189,3 +196,130 @@ async def test_timeouts_and_cancellation(server: FakeServer, rec: Recorder) -> N
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task
+
+
+# -- event loops ---------------------------------------------------------------
+# These are plain (sync) tests: they construct the client outside any event loop
+# and drive it with asyncio.run(), like a script with a module-level client.
+
+
+def test_constructed_outside_a_loop_then_used_in_asyncio_run(
+    server: FakeServer, rec: Recorder
+) -> None:
+    allow_check(rec)
+    client = AsyncPermio(VALID_KEY, base_url=server.base_url, project="my-app")
+
+    async def main() -> bool:
+        try:
+            return await client.check("alice", "p", "/d")
+        finally:
+            await client.close()
+
+    assert asyncio.run(main()) is True
+
+
+def test_used_from_a_second_asyncio_run_after_close(server: FakeServer, rec: Recorder) -> None:
+    allow_check(rec)
+    client = AsyncPermio(VALID_KEY, base_url=server.base_url, project="my-app")
+
+    async def main() -> bool:
+        async with client:
+            return await client.check("alice", "p", "/d")
+
+    # close() (here via `async with`) releases the loop, so a later loop reopens.
+    assert asyncio.run(main()) is True
+    assert asyncio.run(main()) is True
+    assert rec.count("Check") == 2
+
+
+def test_second_asyncio_run_without_close_raises_clear_error(
+    server: FakeServer, rec: Recorder
+) -> None:
+    allow_check(rec)
+    client = AsyncPermio(VALID_KEY, base_url=server.base_url, project="my-app")
+
+    async def use() -> bool:
+        return await client.check("alice", "p", "/d")
+
+    assert asyncio.run(use()) is True
+    with pytest.raises(PermioConfigError, match="another event loop"):
+        asyncio.run(use())
+    assert rec.count("Check") == 1
+
+
+def test_close_is_safe_when_never_opened(server: FakeServer) -> None:
+    client = AsyncPermio(VALID_KEY, base_url=server.base_url)
+
+    async def main() -> None:
+        await client.close()
+        await client.close()
+
+    asyncio.run(main())
+
+
+def test_channel_outside_a_loop_raises(server: FakeServer) -> None:
+    client = AsyncPermio(VALID_KEY, base_url=server.base_url)
+    with pytest.raises(PermioConfigError, match="running event loop"):
+        _ = client.channel
+
+
+async def test_aenter_opens_channel_in_running_loop(server: FakeServer) -> None:
+    client = AsyncPermio(VALID_KEY, base_url=server.base_url)
+    async with client:
+        assert isinstance(client.channel, grpc.aio.Channel)
+        assert client.channel is client.channel
+
+
+async def test_raw_service_unknown_method(aclient: AsyncPermio) -> None:
+    with pytest.raises(AttributeError):
+        _ = aclient.permissions.NoSuchMethod
+
+
+# -- review fixes ----------------------------------------------------------------
+
+
+async def test_check_any_fails_closed_without_missing_list(
+    aclient: AsyncPermio, rec: Recorder
+) -> None:
+    rec.on("Check", lambda req, ctx: pb.CheckPermissionResponse(passed=False))
+    assert await aclient.check_any("alice", ["r", "w"], "/d") is False
+
+
+async def test_repeated_cursor_raises(aclient: AsyncPermio, rec: Recorder) -> None:
+    def perms(req: Any, ctx: Any) -> Any:
+        res = pb.ListPermissionsResponse(permissions=[pb.Permission(name="a")])
+        res.pagination.next_cursor = "same"
+        return res
+
+    rec.on("ListPermissions", perms)
+    names: List[str] = []
+    with pytest.raises(PermioError, match="pagination cursor"):
+        async for p in aclient.list_permissions():
+            names.append(p.name)
+    assert names == ["a", "a"]
+    assert rec.count("ListPermissions") == 2
+
+
+async def test_batch_check_caps_concurrency_at_four(aclient: AsyncPermio, rec: Recorder) -> None:
+    lock = threading.Lock()
+    in_flight = 0
+    peak = 0
+
+    def handler(req: Any, ctx: Any) -> Any:
+        nonlocal in_flight, peak
+        with lock:
+            in_flight += 1
+            peak = max(peak, in_flight)
+        time.sleep(0.05)
+        with lock:
+            in_flight -= 1
+        return pb.BatchCheckResponse(
+            results=[pb.BatchCheckResult(resource_uri=u, allowed=True) for u in req.resource_uris]
+        )
+
+    rec.on("BatchCheck", handler)
+    uris = [f"/d/{i}" for i in range(1000)]
+    result = await aclient.batch_check("alice", "p", uris)
+    assert list(result) == uris and all(result.values())
+    assert rec.count("BatchCheck") == 10
+    assert 1 < peak <= 4
