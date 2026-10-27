@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections import deque
+from concurrent.futures import Future, ThreadPoolExecutor
 from types import TracebackType
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple, Type, Union
 
@@ -19,6 +21,7 @@ from ._access import (
     to_who_am_i,
 )
 from ._core import (
+    BATCH_CHECK_CONCURRENCY,
     DEFAULT_MAX_BATCH_RESOURCES,
     DEFAULT_MAX_RESULTS,
     LIST_PAGE_METHODS,
@@ -307,12 +310,43 @@ class Permio:
     ) -> List[BatchCheckEntry]:
         """Like :meth:`batch_check`, but one entry per resource with the missing permissions."""
         plan = self._config.batch_plan(principal, permission, resources, project, max_resources)
-        # Sent one chunk at a time; each request is built only when it is sent.
-        responses = (
-            self._call("BatchCheck", plan.request(i), timeout, metadata)
-            for i in range(plan.chunk_count())
-        )
-        return self._config.batch_entries(plan.uris, responses)
+        count = plan.chunk_count()
+        if count <= 1:
+            responses: Iterable[Any] = [
+                self._call("BatchCheck", plan.request(i), timeout, metadata) for i in range(count)
+            ]
+            return self._config.batch_entries(plan.uris, responses)
+        # Up to BATCH_CHECK_CONCURRENCY chunks in flight; each request is built
+        # only when it is sent, and responses are read back in request order.
+        # The first failure is raised and no further chunks are sent.
+        with ThreadPoolExecutor(max_workers=min(BATCH_CHECK_CONCURRENCY, count)) as pool:
+            in_flight: deque[Future[Any]] = deque()
+            next_chunk = 0
+
+            def submit() -> None:
+                nonlocal next_chunk
+                in_flight.append(
+                    pool.submit(
+                        self._call, "BatchCheck", plan.request(next_chunk), timeout, metadata
+                    )
+                )
+                next_chunk += 1
+
+            def ordered() -> Iterator[Any]:
+                while next_chunk < count and len(in_flight) < BATCH_CHECK_CONCURRENCY:
+                    submit()
+                while in_flight:
+                    try:
+                        response = in_flight.popleft().result()
+                    except BaseException:
+                        for pending in in_flight:
+                            pending.cancel()
+                        raise
+                    if next_chunk < count:
+                        submit()
+                    yield response
+
+            return self._config.batch_entries(plan.uris, ordered())
 
     # -- access queries ------------------------------------------------------
 

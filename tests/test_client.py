@@ -142,7 +142,8 @@ class TestBatchCheck:
         uris = [f"/d/{i}" for i in range(250)]
         result = client.batch_check("alice", "p", uris)
         assert list(result) == uris
-        assert [len(r.resource_uris) for r in rec.requests("BatchCheck")] == [100, 100, 50]
+        # Chunks run concurrently, so they may reach the server in any order.
+        assert sorted(len(r.resource_uris) for r in rec.requests("BatchCheck")) == [50, 100, 100]
 
     def test_fails_closed_on_missing_result(self, client: Permio, rec: Recorder) -> None:
         rec.on("BatchCheck", lambda req, ctx: pb.BatchCheckResponse())

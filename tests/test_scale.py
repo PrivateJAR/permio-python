@@ -198,18 +198,41 @@ class TestBatchBound:
             client.batch_check("alice", "p", ["/d"], max_resources=0)
         assert rec.calls == []
 
-    def test_sync_sends_chunks_in_order_and_stops_on_error(
+    def test_sync_batch_concurrency_is_4_and_keeps_order(
         self, client: Permio, rec: Recorder
     ) -> None:
+        lock = threading.Lock()
+        in_flight = [0, 0]  # current, peak
+
+        def slow(req: Any, ctx: Any) -> Any:
+            with lock:
+                in_flight[0] += 1
+                in_flight[1] = max(in_flight[1], in_flight[0])
+            # Later chunks answer faster, so completion order differs from request order.
+            time.sleep(0.05 if req.resource_uris[0].endswith("/0") else 0.01)
+            with lock:
+                in_flight[0] -= 1
+            return ok_batch(req, ctx)
+
+        rec.on("BatchCheck", slow)
+        uris = [f"/d/{i}" for i in range(1_250)]
+        result = client.batch_check("alice", "p", uris)
+        assert list(result) == uris
+        assert rec.count("BatchCheck") == 13
+        assert in_flight[1] == 4
+
+    def test_sync_batch_first_error_stops_new_chunks(self, client: Permio, rec: Recorder) -> None:
         def handler(req: Any, ctx: Any) -> Any:
-            if rec.count("BatchCheck") == 3:
+            if req.resource_uris[0] == "/d/0":
                 raise Abort(grpc.StatusCode.INTERNAL, "boom")
+            time.sleep(0.05)
             return ok_batch(req, ctx)
 
         rec.on("BatchCheck", handler)
         with pytest.raises(PermioError):
-            client.batch_check("alice", "p", [f"/d/{i}" for i in range(1_000)])
-        assert rec.count("BatchCheck") == 3
+            client.batch_check("alice", "p", [f"/d/{i}" for i in range(5_000)])
+        # Chunk 0 failed at once; only the chunks already in flight were sent.
+        assert rec.count("BatchCheck") <= 4
 
 
 class TestListTimeoutAndRetries:

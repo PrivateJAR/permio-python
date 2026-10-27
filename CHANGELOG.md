@@ -19,9 +19,10 @@ All notable changes to this package are documented here. The format follows
   de-duplication; a generator is read only up to the cap). More raise
   `PermioValidationError` before any request is sent.
 - `batch_check` builds each `BatchCheck` request only when it is sent instead
-  of all of them up front. `AsyncPermio` runs 4 workers over the chunks:
-  results keep request order, and the first error cancels the in-flight
-  chunks, sends no more and is raised.
+  of all of them up front, and both clients send up to 4 chunks at once
+  (`Permio` on a thread pool, `AsyncPermio` with 4 workers). Results keep
+  request order, and the first error stops any more chunks being sent and is
+  raised.
 
 ### Added
 
