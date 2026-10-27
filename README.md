@@ -131,9 +131,9 @@ checks the basic shape (leading `/`, no empty segments, no whitespace, at most
 ## Batch checks
 
 Check many resources at once; each is answered separately. More than 100 are
-split into several `BatchCheck` calls, each built only when it is sent
-(`AsyncPermio` sends up to 4 at once; results keep request order and the first
-error stops the rest). One call takes at most `max_resources` resources
+split into several `BatchCheck` calls, each built only when it is sent, with
+up to 4 in flight at once (threads on `Permio`, tasks on `AsyncPermio`);
+results keep request order and the first error stops the rest. One call takes at most `max_resources` resources
 (default 10,000, counted before de-duplication); more raise
 `PermioValidationError` before anything is sent.
 
