@@ -27,7 +27,13 @@ from ._access import (
 from ._apikey import API_KEY_LENGTH, is_valid_api_key, validate_api_key
 from ._async_client import AsyncGroups, AsyncPermio
 from ._client import Groups, Permio
-from ._core import MAX_PAGE_SIZE, AddMembersResult, RemoveMembersResult
+from ._core import (
+    DEFAULT_MAX_BATCH_RESOURCES,
+    DEFAULT_MAX_RESULTS,
+    MAX_PAGE_SIZE,
+    AddMembersResult,
+    RemoveMembersResult,
+)
 from ._errors import (
     MissingPermission,
     PermioAuthError,
@@ -38,6 +44,7 @@ from ._errors import (
     PermioPermissionError,
     PermioRateLimitError,
     PermioTimeoutError,
+    PermioTooManyResultsError,
     PermioUnavailableError,
     PermioValidationError,
     parse_missing_permissions,
@@ -56,6 +63,8 @@ from ._version import __version__
 __all__ = [
     "API_KEY_LENGTH",
     "DEFAULT_BASE_URL",
+    "DEFAULT_MAX_BATCH_RESOURCES",
+    "DEFAULT_MAX_RESULTS",
     "DEV_BASE_URL",
     "GROUP_PRINCIPAL_PREFIX",
     "MAX_PAGE_SIZE",
@@ -82,6 +91,7 @@ __all__ = [
     "PermioPermissionError",
     "PermioRateLimitError",
     "PermioTimeoutError",
+    "PermioTooManyResultsError",
     "PermioUnavailableError",
     "PermioValidationError",
     "RemoveMembersResult",

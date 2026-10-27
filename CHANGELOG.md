@@ -4,7 +4,37 @@ All notable changes to this package are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package uses
 [semantic versioning](https://semver.org/).
 
-## 0.1.1 (unreleased)
+## 0.2.0 (unreleased)
+
+### Changed
+
+- **Behaviour change:** `who_has_access` and `list_access` (sync and async)
+  collect at most `max_results` items, default 10,000. Past that they raise the
+  new `PermioTooManyResultsError` instead of reading every page into memory;
+  at most `max_results + 1` items are fetched (the last page request asks only
+  for what is still wanted). Pass a larger `max_results` or use the new
+  streaming forms. A non-positive `max_results` is a `PermioValidationError`.
+- **Behaviour change:** `batch_check` / `batch_check_detailed` accept at most
+  `max_resources` resources per call, default 10,000 (counted as given, before
+  de-duplication; a generator is read only up to the cap). More raise
+  `PermioValidationError` before any request is sent.
+- `batch_check` builds each `BatchCheck` request only when it is sent instead
+  of all of them up front, and both clients send up to 4 chunks at once
+  (`Permio` on a thread pool, `AsyncPermio` with 4 workers). Results keep
+  request order, and the first error stops any more chunks being sent and is
+  raised.
+
+### Added
+
+- `Permio.iter_who_has_access` / `iter_list_access` (iterators) and the
+  `AsyncPermio` equivalents (async iterators) stream access listings one page
+  at a time. Arguments are validated when called.
+- `list_timeout` client option: the per-attempt timeout for every page a list
+  helper fetches (iterators, `iter_*`, `who_has_access`, `list_access`,
+  `groups.list*`). Defaults to `timeout`.
+- `DEFAULT_MAX_RESULTS` and `DEFAULT_MAX_BATCH_RESOURCES` constants.
+
+## 0.1.1
 
 ### Fixed
 

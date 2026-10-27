@@ -22,7 +22,13 @@ from typing import (
 
 from ._access import BatchCheckEntry, CheckResult, inconsistent_response
 from ._apikey import validate_api_key
-from ._errors import MissingPermission, PermioConfigError, PermioError, PermioValidationError
+from ._errors import (
+    MissingPermission,
+    PermioConfigError,
+    PermioError,
+    PermioTooManyResultsError,
+    PermioValidationError,
+)
 from ._resource import GROUP_PRINCIPAL_PREFIX, assert_resource_uri, slug_of
 from ._transport import DEFAULT_BASE_URL, RetryOptions, normalize_retries
 from .pagination.v1 import pagination_pb2
@@ -36,6 +42,18 @@ MAX_PAGE_SIZE = 100
 
 DEFAULT_TIMEOUT = 10.0
 """Default per-attempt timeout in seconds."""
+
+DEFAULT_MAX_RESULTS = 10_000
+"""Default cap on the items ``who_has_access`` / ``list_access`` collect into memory."""
+
+DEFAULT_MAX_BATCH_RESOURCES = 10_000
+"""Default cap on the resources one ``batch_check`` call accepts."""
+
+BATCH_CHUNK_SIZE = 100
+"""Resource URIs per ``BatchCheck`` request."""
+
+BATCH_CHECK_CONCURRENCY = 4
+"""``BatchCheck`` requests in flight at once (asyncio client)."""
 
 Names = Union[str, Sequence[str]]
 
@@ -120,8 +138,12 @@ def paginate(
     fetch: Callable[[pagination_pb2.PaginationRequest], Any],
     items: Callable[[Any], Iterable[T]],
     page_size: Optional[int],
+    max_items: Optional[int] = None,
 ) -> Iterator[T]:
     """Follows ``next_cursor`` until the API returns an empty one.
+
+    With ``max_items``, page requests ask for no more than the items still
+    wanted, and the listing ends once that many have been yielded.
 
     Raises:
         PermioError: if the API returns a cursor it already returned, which would
@@ -130,12 +152,18 @@ def paginate(
     limit = page_limit(page_size)
     cursor: Optional[str] = None
     seen: Set[str] = set()
+    yielded = 0
     while True:
-        req = pagination_pb2.PaginationRequest(limit=limit)
+        want = limit if max_items is None else min(limit, max_items - yielded)
+        req = pagination_pb2.PaginationRequest(limit=want)
         if cursor is not None:
             req.cursor = cursor
         res = fetch(req)
-        yield from items(res)
+        for item in items(res):
+            yield item
+            yielded += 1
+            if max_items is not None and yielded >= max_items:
+                return
         nxt: str = res.pagination.next_cursor
         # An empty cursor ends the listing.
         if not nxt:
@@ -148,23 +176,94 @@ async def apaginate(
     fetch: Callable[[pagination_pb2.PaginationRequest], Awaitable[Any]],
     items: Callable[[Any], Iterable[T]],
     page_size: Optional[int],
+    max_items: Optional[int] = None,
 ) -> AsyncIterator[T]:
     """Async version of :func:`paginate`."""
     limit = page_limit(page_size)
     cursor: Optional[str] = None
     seen: Set[str] = set()
+    yielded = 0
     while True:
-        req = pagination_pb2.PaginationRequest(limit=limit)
+        want = limit if max_items is None else min(limit, max_items - yielded)
+        req = pagination_pb2.PaginationRequest(limit=want)
         if cursor is not None:
             req.cursor = cursor
         res = await fetch(req)
         for item in items(res):
             yield item
+            yielded += 1
+            if max_items is not None and yielded >= max_items:
+                return
         nxt: str = res.pagination.next_cursor
         if not nxt:
             return
         check_cursor(nxt, seen)
         cursor = nxt
+
+
+LIST_PAGE_METHODS = frozenset(
+    [
+        "ListPermissions",
+        "ListRoles",
+        "ListPrincipals",
+        "GetAllAssignmentsForPrincipal",
+        "ListAccess",
+        "ListPrincipalsWithAccess",
+        "ListGroups",
+        "ListGroupMembers",
+        "ListGroupsForPrincipal",
+    ]
+)
+"""PermissionsService RPCs the helpers call once per page; they use ``list_timeout``."""
+
+
+def check_max(value: object, name: str) -> int:
+    """A positive int cap, else :class:`PermioValidationError`."""
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise PermioValidationError(f"permio: {name} must be a positive integer")
+    return value
+
+
+def collect(items: Iterable[T], max_results: int, method: str, stream: str) -> List[T]:
+    """Collects ``items`` (fetched with ``max_items=max_results + 1``), raising past the cap."""
+    out: List[T] = []
+    for item in items:
+        if len(out) >= max_results:
+            raise PermioTooManyResultsError(method, stream, max_results)
+        out.append(item)
+    return out
+
+
+async def acollect(items: AsyncIterator[T], max_results: int, method: str, stream: str) -> List[T]:
+    """Async version of :func:`collect`."""
+    out: List[T] = []
+    async for item in items:
+        if len(out) >= max_results:
+            raise PermioTooManyResultsError(method, stream, max_results)
+        out.append(item)
+    return out
+
+
+@dataclass(frozen=True)
+class BatchPlan:
+    """A validated ``batch_check``: distinct URIs in order; requests are built per chunk."""
+
+    uris: List[str]
+    principal: str
+    permissions: List[str]
+    project_name: str
+
+    def chunk_count(self) -> int:
+        return (len(self.uris) + BATCH_CHUNK_SIZE - 1) // BATCH_CHUNK_SIZE
+
+    def request(self, index: int) -> pb.BatchCheckRequest:
+        start = index * BATCH_CHUNK_SIZE
+        return pb.BatchCheckRequest(
+            project_name=self.project_name,
+            principal_id=self.principal,
+            resource_uris=self.uris[start : start + BATCH_CHUNK_SIZE],
+            permissions=self.permissions,
+        )
 
 
 class ClientConfig:
@@ -177,6 +276,7 @@ class ClientConfig:
         project: Optional[str],
         timeout: Optional[float],
         retries: Union[int, RetryOptions, None],
+        list_timeout: Optional[float] = None,
     ) -> None:
         key = api_key if api_key is not None else os.environ.get("PERMIO_API_KEY")
         self.api_key_kind = validate_api_key(key)
@@ -191,6 +291,11 @@ class ClientConfig:
         ):
             raise PermioConfigError("permio: timeout must be a number of seconds or None")
         self.timeout = DEFAULT_TIMEOUT if timeout is None else max(0.0, float(timeout))
+        if list_timeout is not None and (
+            isinstance(list_timeout, bool) or not isinstance(list_timeout, (int, float))
+        ):
+            raise PermioConfigError("permio: list_timeout must be a number of seconds or None")
+        self.list_timeout = self.timeout if list_timeout is None else max(0.0, float(list_timeout))
         self.retry = normalize_retries(retries)
 
     def resolve_project(self, project: Optional[str]) -> str:
@@ -236,29 +341,34 @@ class ClientConfig:
         wanted = pick(permission, "permission")
         return all(any(p not in m.permissions for p in wanted) for m in result.missing)
 
-    def batch_requests(
-        self, principal: str, permission: Names, resources: Sequence[str], project: Optional[str]
-    ) -> tuple[List[str], List[pb.BatchCheckRequest]]:
+    def batch_plan(
+        self,
+        principal: str,
+        permission: Names,
+        resources: Iterable[str],
+        project: Optional[str],
+        max_resources: int,
+    ) -> BatchPlan:
         require_principal(principal)
+        check_max(max_resources, "max_resources")
         if isinstance(resources, str) or not hasattr(resources, "__iter__"):
             raise PermioValidationError("permio: resources must be a list of resource URIs")
-        uris = list(dict.fromkeys(resources))
+        # Count as given (before de-duplication), and stop reading at the cap.
+        seen: Dict[str, None] = {}
+        for n, uri in enumerate(resources, 1):
+            if n > max_resources:
+                raise PermioValidationError(
+                    f"permio: at most max_resources={max_resources} resources per batch_check; "
+                    "split the call or raise max_resources"
+                )
+            seen[uri] = None
+        uris = list(seen)
         if not uris:
             raise PermioValidationError("permio: at least one resource is required")
         for uri in uris:
             assert_resource_uri(uri)
         perms = pick(permission, "permission")
-        project_name = self.resolve_project(project)
-        chunks = [uris[i : i + 100] for i in range(0, len(uris), 100)]
-        return uris, [
-            pb.BatchCheckRequest(
-                project_name=project_name,
-                principal_id=principal,
-                resource_uris=chunk,
-                permissions=perms,
-            )
-            for chunk in chunks
-        ]
+        return BatchPlan(uris, principal, perms, self.resolve_project(project))
 
     @staticmethod
     def batch_entries(

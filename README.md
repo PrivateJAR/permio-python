@@ -60,6 +60,7 @@ permio = Permio(
     base_url=DEV_BASE_URL,     # default: DEFAULT_BASE_URL (https://api.perms.io, production)
     project="my-app",          # default project for every call; each call can pass project=
     timeout=10,                # seconds per attempt; 0 disables
+    list_timeout=30,           # seconds per attempt for each list page; default: timeout
     retries=RetryOptions(max_retries=2, base_delay=0.1, max_delay=2.0),  # or an int
 )
 ```
@@ -70,6 +71,7 @@ permio = Permio(
 | `base_url`        | `https://api.perms.io`      | `https://host[:port]`, `http://host:port` (plaintext, e.g. local) or `host:port` (TLS) |
 | `project`         | none                        | Required by every call except `who_am_i()`, here or per call |
 | `timeout`         | `10`                        | Per attempt, in seconds. Per-call `timeout=` is an overall deadline across retries |
+| `list_timeout`    | `timeout`                   | Per attempt for each page a list helper fetches (iterators, `iter_*`, `who_has_access`, `list_access`). A per-call `timeout=` still caps it |
 | `retries`         | `2`                         | `int` or `RetryOptions`; see [Retries and timeouts](#retries-and-timeouts) |
 | `channel`         | none                        | Your own `grpc.Channel` (`grpc.aio.Channel` for `AsyncPermio`); not closed by the client |
 | `channel_options` | none                        | Extra gRPC channel options when the client creates the channel |
@@ -129,7 +131,11 @@ checks the basic shape (leading `/`, no empty segments, no whitespace, at most
 ## Batch checks
 
 Check many resources at once; each is answered separately. More than 100 are
-split into several `BatchCheck` calls (`AsyncPermio` sends up to 4 at once).
+split into several `BatchCheck` calls, each built only when it is sent, with
+up to 4 in flight at once (threads on `Permio`, tasks on `AsyncPermio`);
+results keep request order and the first error stops the rest. One call takes at most `max_resources` resources
+(default 10,000, counted before de-duplication); more raise
+`PermioValidationError` before anything is sent.
 
 ```python
 allowed = permio.batch_check("alice", "docs.read", [resource("docs", d.id) for d in docs])
@@ -181,7 +187,10 @@ permio.groups.delete("editors")                           # also removes its gra
 
 `list_access` returns where a principal holds a permission at or below a URI,
 following every page, so you can filter in your database instead of checking
-row by row:
+row by row. It collects at most `max_results` scopes (default 10,000) and
+raises `PermioTooManyResultsError` past that; `iter_list_access` streams the
+scopes instead (when the principal covers all of `under`, the only scope is a
+`"subtree"` scope whose `uri` is `under`):
 
 ```python
 access = permio.list_access("alice", "docs.read", "/docs")
@@ -213,6 +222,21 @@ match `/docs/12` for `/docs/1`.
 for entry in permio.who_has_access("/docs/42", permission="docs.read", expand_groups=True):
     print(entry.principal, entry.is_group, entry.via_group,
           [(g.resource, g.match, g.source.type) for g in entry.via])
+```
+
+A resource can have millions of principals with access. `who_has_access`
+collects into a list, so it stops at `max_results` entries (default 10,000):
+one more raises `PermioTooManyResultsError` (at most `max_results + 1` entries
+are fetched). Stream instead, one page at a time:
+
+```python
+for entry in permio.iter_who_has_access("/docs/42"):            # Iterator
+    notify(entry.principal)
+
+async for entry in async_permio.iter_who_has_access("/docs/42"):  # AsyncIterator
+    ...
+
+permio.who_has_access("/docs/42", max_results=50_000)  # or raise the cap
 ```
 
 ## Listing
@@ -250,6 +274,7 @@ None for SDK-side errors), `code_name` (for example `"permission_denied"`),
 | `PermioUnavailableError` | `UNAVAILABLE`, including network failures |
 | `PermioTimeoutError`     | `DEADLINE_EXCEEDED`, including the SDK's own deadlines |
 | `PermioRateLimitError`   | `RESOURCE_EXHAUSTED`: the organisation's rate limit is used up. `retry_after` is the server's requested delay in seconds (or None) |
+| `PermioTooManyResultsError` | `who_has_access` / `list_access` found more than `max_results` items (`max_results` is set; `code` is None). Use `iter_who_has_access` / `iter_list_access` or raise `max_results` |
 | `PermioDeniedError`      | Raised only by `assert_allowed()` when the *principal* is not allowed; has `principal` and `missing` |
 
 Anything else is a plain `PermioError` with the matching `code`.
@@ -287,8 +312,9 @@ retried after that delay (plus a little jitter) if it is within
 `retry_after`. A `retry-after` header on `UNAVAILABLE` is honoured as the
 minimum backoff.
 
-`timeout` on the client applies to each attempt; `timeout=` on a call is an
-overall deadline across retries. On `AsyncPermio`, cancelling the task cancels
+`timeout` on the client applies to each attempt (`list_timeout` for each page
+of a listing); `timeout=` on a call is an overall deadline across retries (for
+listings, per page). On `AsyncPermio`, cancelling the task cancels
 the call and any pending retry.
 
 ## Raw clients (full API)
