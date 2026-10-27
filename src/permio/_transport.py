@@ -151,12 +151,23 @@ def channel_options(extra: Optional[Sequence[Tuple[str, Any]]]) -> list[Tuple[st
     return [("grpc.primary_user_agent", f"permio-python/{__version__}"), *(extra or [])]
 
 
+class _Unset:
+    """Sentinel type: "use the client's per-attempt timeout"."""
+
+
+UNSET: Any = _Unset()
+
+
+def _positive(value: Any) -> Optional[float]:
+    return float(value) if value is not None and value > 0 else None
+
+
 class _Policy:
     """What both invokers share: auth metadata, timeouts and the retry decision."""
 
     def __init__(self, api_key: str, timeout: Optional[float], retry: RetryOptions) -> None:
         self.authorization = ("authorization", f"Bearer {api_key}")
-        self.timeout = timeout if timeout and timeout > 0 else None
+        self.timeout = _positive(timeout)
         self.retry = retry
         self.random: Callable[[], float] = random.random
 
@@ -168,17 +179,25 @@ class _Policy:
         return None if overall is None or overall <= 0 else time.monotonic() + overall
 
     def attempt_timeout(
-        self, deadline: Optional[float], overall: Optional[float]
+        self,
+        deadline: Optional[float],
+        overall: Optional[float],
+        per_attempt: Any = UNSET,
     ) -> Optional[float]:
-        """Timeout for the next attempt, or raises if the overall deadline has passed."""
+        """Timeout for the next attempt, or raises if the overall deadline has passed.
+
+        ``per_attempt`` replaces the client's per-attempt timeout (``<= 0``
+        disables it); by default the client's applies.
+        """
+        attempt = self.timeout if per_attempt is UNSET else _positive(per_attempt)
         if deadline is None:
-            return self.timeout
+            return attempt
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise PermioTimeoutError(
                 f"deadline of {overall}s exceeded", code=grpc.StatusCode.DEADLINE_EXCEEDED
             )
-        return remaining if self.timeout is None else min(self.timeout, remaining)
+        return remaining if attempt is None else min(attempt, remaining)
 
     def retry_delay(
         self, err: PermioError, attempt: int, retries: int, deadline: Optional[float]
@@ -225,6 +244,7 @@ class SyncInvoker(_Policy):
         *,
         timeout: Optional[float] = None,
         metadata: MetadataArg = None,
+        per_attempt: Any = UNSET,
     ) -> Any:
         md = self.metadata(metadata)
         retries = self.retry.max_retries if is_idempotent_method(method) else 0
@@ -232,7 +252,11 @@ class SyncInvoker(_Policy):
         attempt = 0
         while True:
             try:
-                return fn(request, timeout=self.attempt_timeout(deadline, timeout), metadata=md)
+                return fn(
+                    request,
+                    timeout=self.attempt_timeout(deadline, timeout, per_attempt),
+                    metadata=md,
+                )
             except grpc.RpcError as e:
                 err = to_permio_error(e)
                 delay = self.retry_delay(err, attempt, retries, deadline)
@@ -255,6 +279,7 @@ class AsyncInvoker(_Policy):
         *,
         timeout: Optional[float] = None,
         metadata: MetadataArg = None,
+        per_attempt: Any = UNSET,
     ) -> Any:
         md = self.metadata(metadata)
         retries = self.retry.max_retries if is_idempotent_method(method) else 0
@@ -263,7 +288,9 @@ class AsyncInvoker(_Policy):
         while True:
             try:
                 return await fn(
-                    request, timeout=self.attempt_timeout(deadline, timeout), metadata=md
+                    request,
+                    timeout=self.attempt_timeout(deadline, timeout, per_attempt),
+                    metadata=md,
                 )
             except grpc.RpcError as e:
                 err = to_permio_error(e)

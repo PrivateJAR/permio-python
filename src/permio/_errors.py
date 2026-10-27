@@ -119,6 +119,23 @@ class PermioRateLimitError(PermioError):
         self.retry_after = retry_after
 
 
+class PermioTooManyResultsError(PermioError):
+    """A collect-all call (``who_has_access``, ``list_access``) found more than ``max_results`` items.
+
+    Raised as soon as item ``max_results + 1`` arrives; no further pages are
+    fetched. Iterate the streaming form (``iter_who_has_access``,
+    ``iter_list_access``) instead, or pass a larger ``max_results``. ``code``
+    is None: the API did not fail.
+    """
+
+    def __init__(self, method: str, stream: str, max_results: int) -> None:
+        super().__init__(
+            f"permio: {method} found more than max_results={max_results} results; "
+            f"use {stream} to stream them, or raise max_results"
+        )
+        self.max_results = max_results
+
+
 class PermioDeniedError(PermioError):
     """Raised by ``assert_allowed()`` when the principal lacks the requested permissions.
 
@@ -262,6 +279,7 @@ __all__: Sequence[str] = (
     "PermioTimeoutError",
     "PermioRateLimitError",
     "PermioDeniedError",
+    "PermioTooManyResultsError",
     "parse_missing_permissions",
     "server_retry_delay",
     "to_permio_error",

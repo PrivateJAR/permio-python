@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from types import TracebackType
-from typing import Any, AsyncIterator, Dict, List, Optional, Sequence, Tuple, Type, Union
+from typing import Any, AsyncIterator, Dict, Iterable, List, Optional, Sequence, Tuple, Type, Union
 
 import grpc
 import grpc.aio
@@ -21,11 +21,17 @@ from ._access import (
     to_who_am_i,
 )
 from ._core import (
+    BATCH_CHECK_CONCURRENCY,
+    DEFAULT_MAX_BATCH_RESOURCES,
+    DEFAULT_MAX_RESULTS,
+    LIST_PAGE_METHODS,
     AddMembersResult,
     ClientConfig,
     Names,
     RemoveMembersResult,
+    acollect,
     apaginate,
+    check_max,
     require_principal,
 )
 from ._errors import PermioConfigError, PermioDeniedError, PermioValidationError
@@ -43,7 +49,6 @@ from .organisation.v1 import organisation_pb2_grpc
 from .permissions.v1 import permissions_pb2 as pb
 from .permissions.v1 import permissions_pb2_grpc
 
-BATCH_CHECK_CONCURRENCY = 4
 """Most ``BatchCheck`` calls :meth:`AsyncPermio.batch_check` has in flight at once."""
 
 
@@ -70,6 +75,9 @@ class AsyncPermio:
             ``http://host:port`` connects without TLS; ``host:port`` uses TLS.
         project: Default project for helpers that take ``project``.
         timeout: Timeout per attempt in seconds. Default 10; 0 disables it.
+        list_timeout: Timeout per attempt for each page a list helper fetches
+            (iterators, streams, ``who_has_access``, ``list_access``). Defaults to
+            ``timeout``; 0 disables it. A per-call ``timeout`` still caps it.
         retries: Retries for idempotent reads on UNAVAILABLE / DEADLINE_EXCEEDED
             (and rate limiting with a server-given delay). An int sets
             ``max_retries``; default 2. Writes are never retried.
@@ -86,11 +94,12 @@ class AsyncPermio:
         base_url: Optional[str] = None,
         project: Optional[str] = None,
         timeout: Optional[float] = None,
+        list_timeout: Optional[float] = None,
         retries: Union[int, RetryOptions, None] = None,
         channel: Optional[grpc.aio.Channel] = None,
         channel_options: Optional[Sequence[Tuple[str, Any]]] = None,
     ) -> None:
-        self._config = ClientConfig(api_key, base_url, project, timeout, retries)
+        self._config = ClientConfig(api_key, base_url, project, timeout, retries, list_timeout)
         # The client's own channel is created lazily, inside the running event
         # loop: a grpc.aio channel belongs to the loop it was created in, so
         # creating it here would tie the client to whatever loop (if any)
@@ -218,6 +227,16 @@ class AsyncPermio:
         timeout: Optional[float],
         metadata: MetadataArg,
     ) -> Any:
+        if method in LIST_PAGE_METHODS:
+            # One page of a listing: per-attempt timeout is list_timeout.
+            return await self._invoker.call(
+                f"{PERMISSIONS_SERVICE}.{method}",
+                getattr(self.permissions._stub, method),
+                request,
+                timeout=timeout,
+                metadata=metadata,
+                per_attempt=self._config.list_timeout,
+            )
         return await getattr(self.permissions, method)(request, timeout=timeout, metadata=metadata)
 
     # -- checks --------------------------------------------------------------
@@ -307,8 +326,9 @@ class AsyncPermio:
         self,
         principal: str,
         permission: Names,
-        resources: Sequence[str],
+        resources: Iterable[str],
         *,
+        max_resources: int = DEFAULT_MAX_BATCH_RESOURCES,
         project: Optional[str] = None,
         timeout: Optional[float] = None,
         metadata: MetadataArg = None,
@@ -316,14 +336,24 @@ class AsyncPermio:
         """Checks each resource separately; returns ``{uri: allowed}`` in request order.
 
         A resource is allowed only with every requested permission. More than
-        100 resources are split into several ``BatchCheck`` calls. Use it to
+        100 resources are split into ``BatchCheck`` calls of 100, with at most 4 in flight at once. Use it to
         filter a list you already have::
 
-            allowed = permio.batch_check(user_id, "docs.read", [resource("docs", d.id) for d in docs])
+            allowed = await permio.batch_check(user_id, "docs.read", [resource("docs", d.id) for d in docs])
             visible = [d for d in docs if allowed[resource("docs", d.id)]]
+
+        Raises:
+            PermioValidationError: for more than ``max_resources`` resources
+                (default 10,000, counted before de-duplication), or malformed input.
         """
         entries = await self.batch_check_detailed(
-            principal, permission, resources, project=project, timeout=timeout, metadata=metadata
+            principal,
+            permission,
+            resources,
+            max_resources=max_resources,
+            project=project,
+            timeout=timeout,
+            metadata=metadata,
         )
         return {e.resource: e.allowed for e in entries}
 
@@ -331,27 +361,37 @@ class AsyncPermio:
         self,
         principal: str,
         permission: Names,
-        resources: Sequence[str],
+        resources: Iterable[str],
         *,
+        max_resources: int = DEFAULT_MAX_BATCH_RESOURCES,
         project: Optional[str] = None,
         timeout: Optional[float] = None,
         metadata: MetadataArg = None,
     ) -> List[BatchCheckEntry]:
-        """Like :meth:`batch_check`, but one entry per resource with the missing permissions.
+        """Like :meth:`batch_check`, but one entry per resource with the missing permissions."""
+        plan = self._config.batch_plan(principal, permission, resources, project, max_resources)
+        responses: List[Any] = [None] * plan.chunk_count()
+        chunks = iter(range(plan.chunk_count()))
 
-        More than 100 resources are split into ``BatchCheck`` calls of 100, with
-        at most 4 in flight at once.
-        """
-        uris, requests = self._config.batch_requests(principal, permission, resources, project)
-        # Chunks of 100 run concurrently, but at most BATCH_CHECK_CONCURRENCY at a time.
-        limit = asyncio.Semaphore(BATCH_CHECK_CONCURRENCY)
+        # BATCH_CHECK_CONCURRENCY workers take the next chunk index from a shared
+        # iterator, so each request is built only when it is sent and results
+        # keep request order. The first error cancels the rest and is raised.
+        async def worker() -> None:
+            for i in chunks:
+                responses[i] = await self._call("BatchCheck", plan.request(i), timeout, metadata)
 
-        async def send(req: pb.BatchCheckRequest) -> Any:
-            async with limit:
-                return await self._call("BatchCheck", req, timeout, metadata)
-
-        responses = await asyncio.gather(*(send(r) for r in requests))
-        return self._config.batch_entries(uris, responses)
+        workers = [
+            asyncio.ensure_future(worker())
+            for _ in range(min(BATCH_CHECK_CONCURRENCY, plan.chunk_count()))
+        ]
+        try:
+            await asyncio.gather(*workers)
+        except BaseException:
+            for w in workers:
+                w.cancel()
+            await asyncio.gather(*workers, return_exceptions=True)
+            raise
+        return self._config.batch_entries(plan.uris, responses)
 
     # -- access queries ------------------------------------------------------
 
@@ -361,6 +401,7 @@ class AsyncPermio:
         permission: str,
         under: str,
         *,
+        max_results: int = DEFAULT_MAX_RESULTS,
         project: Optional[str] = None,
         page_size: Optional[int] = None,
         timeout: Optional[float] = None,
@@ -368,17 +409,64 @@ class AsyncPermio:
     ) -> AccessScopes:
         """Answers "where may ``principal`` use ``permission`` at or below ``under``?".
 
-        Follows every page. Use the result to filter lists in your database:
+        Follows every page into memory, up to ``max_results`` scopes (default
+        10,000). Use the result to filter lists in your database:
         ``covers_all`` means no filter is needed, ``to_prefixes()`` gives path
         prefixes, ``to_regex()`` a regex, and ``allows(uri)`` tests one URI.
+        :meth:`iter_list_access` streams the scopes instead.
 
         Raises:
+            PermioTooManyResultsError: past ``max_results`` scopes; at most
+                ``max_results + 1`` are fetched.
             PermioPermissionError: unless the API key has ``permission.check`` on
                 ``under`` and ``principal.assignment.get`` on the principal.
         """
+        check_max(max_results, "max_results")
+        found = await acollect(
+            self._list_access_items(
+                principal, permission, under, project, page_size, timeout, metadata, max_results + 1
+            ),
+            max_results,
+            "list_access",
+            "iter_list_access",
+        )
+        covers_all = any(c for c, _ in found)
+        return AccessScopes(under, covers_all, [s for _, s in found])
+
+    def iter_list_access(
+        self,
+        principal: str,
+        permission: str,
+        under: str,
+        *,
+        project: Optional[str] = None,
+        page_size: Optional[int] = None,
+        timeout: Optional[float] = None,
+        metadata: MetadataArg = None,
+    ) -> AsyncIterator[AccessScopeInfo]:
+        """Streams the scopes of :meth:`list_access`, fetching pages as needed.
+
+        Nothing is buffered beyond one page. When ``principal`` holds
+        ``permission`` on ``under`` itself, the only scope is a ``"subtree"``
+        scope whose ``uri`` is ``under`` (that is ``covers_all``).
+        """
+        items = self._list_access_items(
+            principal, permission, under, project, page_size, timeout, metadata, None
+        )
+        return _second(items)
+
+    def _list_access_items(
+        self,
+        principal: str,
+        permission: str,
+        under: str,
+        project: Optional[str],
+        page_size: Optional[int],
+        timeout: Optional[float],
+        metadata: MetadataArg,
+        max_items: Optional[int],
+    ) -> AsyncIterator[Tuple[bool, AccessScopeInfo]]:
         base = self._config.list_access_request(principal, permission, under, project)
-        covers_all = False
-        scopes: List[AccessScopeInfo] = []
 
         async def fetch(pagination: Any) -> Any:
             req = pb.ListAccessRequest()
@@ -386,12 +474,64 @@ class AsyncPermio:
             req.pagination.CopyFrom(pagination)
             return await self._call("ListAccess", req, timeout, metadata)
 
-        async for page in apaginate(fetch, lambda res: [res], page_size):
-            covers_all = covers_all or page.covers_all
-            scopes.extend(AccessScopeInfo(s.uri, scope_kind_name(s.scope)) for s in page.scopes)
-        return AccessScopes(under, covers_all, scopes)
+        return apaginate(
+            fetch,
+            lambda res: [
+                (res.covers_all, AccessScopeInfo(s.uri, scope_kind_name(s.scope)))
+                for s in res.scopes
+            ],
+            page_size,
+            max_items,
+        )
 
     async def who_has_access(
+        self,
+        resource: str,
+        *,
+        permission: Optional[str] = None,
+        expand_groups: bool = False,
+        max_results: int = DEFAULT_MAX_RESULTS,
+        project: Optional[str] = None,
+        page_size: Optional[int] = None,
+        timeout: Optional[float] = None,
+        metadata: MetadataArg = None,
+    ) -> List[AccessEntry]:
+        """Answers "who has access to ``resource``?", following every page into memory.
+
+        Lists the principals (groups included, as ``group:<slug>``) with a grant
+        on the resource, an ancestor of it, or a ``_`` wildcard URI matching it,
+        ordered by principal ID, with the grants that give the access. With
+        ``permission``, only grants that confer it count. ``expand_groups`` also
+        lists every member of each listed group, with ``via_group`` set.
+
+        Collects at most ``max_results`` entries (default 10,000); a resource
+        can have millions of principals, so :meth:`iter_who_has_access` streams
+        them instead.
+
+        Raises:
+            PermioTooManyResultsError: past ``max_results`` entries; at most
+                ``max_results + 1`` are fetched.
+            PermioPermissionError: unless the API key has ``principal.list`` and
+                ``principal.assignment.list`` on the project.
+        """
+        check_max(max_results, "max_results")
+        return await acollect(
+            self._who_has_access_items(
+                resource,
+                permission,
+                expand_groups,
+                project,
+                page_size,
+                timeout,
+                metadata,
+                max_results + 1,
+            ),
+            max_results,
+            "who_has_access",
+            "iter_who_has_access",
+        )
+
+    def iter_who_has_access(
         self,
         resource: str,
         *,
@@ -401,19 +541,28 @@ class AsyncPermio:
         page_size: Optional[int] = None,
         timeout: Optional[float] = None,
         metadata: MetadataArg = None,
-    ) -> List[AccessEntry]:
-        """Answers "who has access to ``resource``?", following every page.
+    ) -> AsyncIterator[AccessEntry]:
+        """Streams the entries of :meth:`who_has_access`, fetching pages as needed.
 
-        Lists the principals (groups included, as ``group:<slug>``) with a grant
-        on the resource, an ancestor of it, or a ``_`` wildcard URI matching it,
-        ordered by principal ID, with the grants that give the access. With
-        ``permission``, only grants that confer it count. ``expand_groups`` also
-        lists every member of each listed group, with ``via_group`` set.
-
-        Raises:
-            PermioPermissionError: unless the API key has ``principal.list`` and
-                ``principal.assignment.list`` on the project.
+        Nothing is buffered beyond one page, so this suits resources with any
+        number of principals. Arguments are validated when called; pages are
+        fetched as you iterate.
         """
+        return self._who_has_access_items(
+            resource, permission, expand_groups, project, page_size, timeout, metadata, None
+        )
+
+    def _who_has_access_items(
+        self,
+        resource: str,
+        permission: Optional[str],
+        expand_groups: bool,
+        project: Optional[str],
+        page_size: Optional[int],
+        timeout: Optional[float],
+        metadata: MetadataArg,
+        max_items: Optional[int],
+    ) -> AsyncIterator[AccessEntry]:
         base = self._config.who_has_access_request(resource, permission, expand_groups, project)
 
         async def fetch(pagination: Any) -> Any:
@@ -422,9 +571,9 @@ class AsyncPermio:
             req.pagination.CopyFrom(pagination)
             return await self._call("ListPrincipalsWithAccess", req, timeout, metadata)
 
-        return [
-            to_access_entry(p) async for p in apaginate(fetch, lambda r: r.principals, page_size)
-        ]
+        return apaginate(
+            fetch, lambda r: [to_access_entry(p) for p in r.principals], page_size, max_items
+        )
 
     # -- lists ---------------------------------------------------------------
 
@@ -843,3 +992,10 @@ class _NoChannel:
         return None
 
     unary_stream = stream_unary = stream_stream = unary_unary
+
+
+async def _second(
+    items: AsyncIterator[Tuple[bool, AccessScopeInfo]],
+) -> AsyncIterator[AccessScopeInfo]:
+    async for _, scope in items:
+        yield scope
