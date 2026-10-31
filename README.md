@@ -348,7 +348,7 @@ your own channel and `authorization: Bearer <key>` metadata.
 
 The generated modules are `permio.permissions.v1`, `permio.organisation.v1`,
 `permio.pagination.v1` and `permio.validate`. They are produced from
-[PrivateJAR/proto](https://github.com/PrivateJAR/proto) and must not be edited
+[perms-io/proto](https://github.com/perms-io/proto) and must not be edited
 by hand.
 
 ## API key format
