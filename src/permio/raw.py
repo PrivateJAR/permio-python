@@ -18,7 +18,7 @@ directly.
 
 The modules themselves live at ``permio.permissions.v1``,
 ``permio.organisation.v1`` and ``permio.pagination.v1``; they are generated
-from the PrivateJAR/proto repository and must not be edited by hand.
+from the perms-io/proto repository and must not be edited by hand.
 """
 
 from .organisation.v1 import organisation_pb2, organisation_pb2_grpc
