@@ -5,13 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "permio"
 dynamic = ["version"]
-description = "Python SDK for perms.io: permission checks, grants, groups and access queries over gRPC"
+description = "Python SDK for perms.io: RBAC and fine-grained authorization as a service. Permission checks, grants, groups and access queries over gRPC"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "PrivateJAR", email = "support@perms.io" }]
 requires-python = ">=3.9"
-keywords = ["permissions", "rbac", "authorization", "perms.io", "grpc"]
+keywords = ["permio", "perms.io", "permissions", "permissions-api", "rbac", "authorization", "authz", "access-control", "fine-grained-authorization", "multi-tenant", "acl", "grpc"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",

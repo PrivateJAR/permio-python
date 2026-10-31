@@ -26,6 +26,7 @@ All notable changes to this package are documented here. The format follows
 
 ### Added
 
+- Fuller PyPI description and keywords, and README badges.
 - `Permio.iter_who_has_access` / `iter_list_access` (iterators) and the
   `AsyncPermio` equivalents (async iterators) stream access listings one page
   at a time. Arguments are validated when called.
