@@ -24,8 +24,6 @@ from ._version import __version__
 
 DEFAULT_BASE_URL = "https://api.perms.io"
 """Production API."""
-DEV_BASE_URL = "https://dev-api.perms.io"
-"""Development API."""
 
 PERMISSIONS_SERVICE = "permio.permissions.v1.PermissionsService"
 ORGANISATION_SERVICE = "permio.organisation.v1.OrganisationService"

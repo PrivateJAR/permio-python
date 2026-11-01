@@ -66,7 +66,7 @@ class Permio:
             Defaults to the ``PERMIO_API_KEY`` environment variable. Checked
             locally for typos (:class:`PermioConfigError`).
         base_url: API endpoint. Defaults to production, ``https://api.perms.io``
-            (:data:`DEFAULT_BASE_URL`); use :data:`DEV_BASE_URL` for development.
+            (:data:`DEFAULT_BASE_URL`). Pass another URL for a non-production environment.
             ``http://host:port`` connects without TLS; ``host:port`` uses TLS.
         project: Default project for helpers that take ``project``.
         timeout: Timeout per attempt in seconds. Default 10; 0 disables it.

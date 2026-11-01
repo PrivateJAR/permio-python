@@ -4,6 +4,21 @@ All notable changes to this package are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package uses
 [semantic versioning](https://semver.org/).
 
+## 0.3.0 (unreleased)
+
+### Removed
+
+- **Breaking:** the `DEV_BASE_URL` constant has been removed. Pass the base URL
+  of the environment you want explicitly (`Permio(base_url=...)`);
+  `DEFAULT_BASE_URL` (production) is unchanged.
+
+### Changed
+
+- The live test suite (`tests/test_live.py`) now requires `PERMIO_BASE_URL`
+  and is skipped when it is unset. Its host allowlist is `localhost`,
+  `127.0.0.1`, `::1`, `*.localhost`, `*.test` and `*.perms.io` except
+  `api.perms.io` (production).
+
 ## 0.2.0 (unreleased)
 
 ### Changed
@@ -66,7 +81,7 @@ All notable changes to this package are documented here. The format follows
   test (`starts_with(path, p || '/')`) instead of `LIKE p || '/%'`, in which
   `_` and `%` are wildcards.
 - The live test suite only runs against an allowlist of hosts
-  (`dev-api.perms.io`, `localhost`, `127.0.0.1`, `::1`, `*.localhost`,
+  (the development API, `localhost`, `127.0.0.1`, `::1`, `*.localhost`,
   `*.test`), parsed from the URL, instead of a case-sensitive production
   pattern.
 
