@@ -58,11 +58,11 @@ first; otherwise the call raises `PermioConfigError`.
 ## Configuration
 
 ```python
-from permio import DEV_BASE_URL, Permio, RetryOptions
+from permio import Permio, RetryOptions
 
 permio = Permio(
     api_key="perms_...",       # default: $PERMIO_API_KEY; checked locally for typos
-    base_url=DEV_BASE_URL,     # default: DEFAULT_BASE_URL (https://api.perms.io, production)
+    base_url="https://...",    # default: DEFAULT_BASE_URL (https://api.perms.io, production)
     project="my-app",          # default project for every call; each call can pass project=
     timeout=10,                # seconds per attempt; 0 disables
     list_timeout=30,           # seconds per attempt for each list page; default: timeout
@@ -85,9 +85,8 @@ Every call also accepts `metadata=[("header", "value")]` for extra request heade
 
 ### Dev vs prod
 
-`DEFAULT_BASE_URL` (`https://api.perms.io`) is production and the default.
-`DEV_BASE_URL` (`https://dev-api.perms.io`) is the development API; keys are
-per environment. `permio.who_am_i()` tells you which organisation and project a
+`DEFAULT_BASE_URL` (`https://api.perms.io`) is production and the default. To
+use another environment, pass its URL as `base_url`; keys are per environment. `permio.who_am_i()` tells you which organisation and project a
 key belongs to and whether it can write:
 
 ```python
@@ -373,17 +372,19 @@ pytest                # unit tests against an in-process gRPC server
 
 `tests/test_live.py` runs the same scenarios as the other Permio SDKs against a
 real deployment: whoAmI, grant then check, batch check, list access, revoke,
-groups, and a bad key. It is skipped unless `PERMIO_API_KEY` is set, defaults
-to the dev API (`PERMIO_BASE_URL` overrides it) and refuses to run against
-production. The key needs full access to its project (`PERMIO_PROJECT`, default
+groups, and a bad key. It is skipped unless both `PERMIO_API_KEY` and
+`PERMIO_BASE_URL` are set, and refuses to run against production
+(`api.perms.io`) or any host outside its allowlist (local/test hosts and
+non-production `*.perms.io` hosts). The key needs full access to its project (`PERMIO_PROJECT`, default
 the key's own project). It creates and deletes fixed `sdk-it-python-*` IDs.
 
 ```bash
-PERMIO_API_KEY=perms_... pytest tests/test_live.py -v
+PERMIO_API_KEY=perms_... PERMIO_BASE_URL=https://... pytest tests/test_live.py -v
 ```
 
-CI runs it in a serialised `integration` job when the `PERMIO_DEV_API_KEY`
-repository secret exists, and skips it with a notice otherwise.
+CI runs it in a serialised `integration` job when the `PERMIO_DEV_API_KEY` and
+`PERMIO_DEV_BASE_URL` repository secrets exist, and skips it with a notice
+otherwise.
 
 Releasing is described in [RELEASING.md](RELEASING.md).
 

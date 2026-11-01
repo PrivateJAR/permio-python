@@ -57,7 +57,7 @@ from ._resource import (
     group,
     resource,
 )
-from ._transport import DEFAULT_BASE_URL, DEV_BASE_URL, RetryOptions, is_idempotent_method
+from ._transport import DEFAULT_BASE_URL, RetryOptions, is_idempotent_method
 from ._version import __version__
 
 __all__ = [
@@ -65,7 +65,6 @@ __all__ = [
     "DEFAULT_BASE_URL",
     "DEFAULT_MAX_BATCH_RESOURCES",
     "DEFAULT_MAX_RESULTS",
-    "DEV_BASE_URL",
     "GROUP_PRINCIPAL_PREFIX",
     "MAX_PAGE_SIZE",
     "MAX_RESOURCE_URI_LENGTH",

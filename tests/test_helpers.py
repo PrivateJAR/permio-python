@@ -229,7 +229,7 @@ class TestErrorsAndRetryPolicy:
         ("url", "target", "secure"),
         [
             ("https://api.perms.io", "api.perms.io:443", True),
-            ("https://dev-api.perms.io/", "dev-api.perms.io:443", True),
+            ("https://api.example.com/", "api.example.com:443", True),
             ("http://localhost:8080", "localhost:8080", False),
             ("http://localhost", "localhost:80", False),
             ("api.perms.io:443", "api.perms.io:443", True),
@@ -247,15 +247,16 @@ class TestErrorsAndRetryPolicy:
 
 
 class TestLiveGuard:
-    """tests/test_live.py only runs against the dev API and local/test hosts."""
+    """tests/test_live.py only runs against local/test hosts and non-production perms.io hosts."""
 
     @pytest.mark.parametrize(
         "url",
         [
-            "https://dev-api.perms.io",
-            "https://DEV-API.perms.io:443/",
-            "dev-api.perms.io:443",
-            "dev-api.perms.io.",
+            "https://staging.perms.io",
+            "https://STAGING.perms.io:443/",
+            "staging.perms.io:443",
+            "staging.perms.io.",
+            "https://temp-api.perms.io",
             "http://localhost:8080",
             "http://127.0.0.1:50051",
             "http://[::1]:50051",
@@ -277,10 +278,14 @@ class TestLiveGuard:
             "api.perms.io",
             "api.perms.io:443",
             "https://api.perms.io./",
-            "https://temp-api.perms.io",
-            "https://dev-api.perms.io.evil.com",
-            "https://dev-api.perms.io@api.perms.io",
-            "https://evil.com\\@dev-api.perms.io",
+            "https://x@api.perms.io",
+            "https://staging.perms.io.evil.com",
+            "https://foo.perms.io.evil.com",
+            "https://staging.perms.io@api.perms.io",
+            "https://evil.com\\@staging.perms.io",
+            "https://perms.io",
+            "https://.perms.io",
+            "https://evilperms.io",
             "https://localhost.example.com",
             "https://test",
             "https://.test",

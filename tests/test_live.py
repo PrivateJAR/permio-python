@@ -1,12 +1,12 @@
 """Integration test against a real deployment.
 
-Skipped unless PERMIO_API_KEY is set. PERMIO_BASE_URL defaults to the
-development API (DEV_BASE_URL). Because it writes, it only runs against an
-allowlist of hosts: dev-api.perms.io, localhost, 127.0.0.1, ::1, *.localhost
-and *.test. The key needs full access to its project (PERMIO_PROJECT, default:
-the key's project from who_am_i)::
+Skipped unless both PERMIO_API_KEY and PERMIO_BASE_URL are set. Because it
+writes, it only runs against an allowlist of hosts: localhost, 127.0.0.1, ::1,
+*.localhost, *.test, and *.perms.io except api.perms.io (production). The key
+needs full access to its project (PERMIO_PROJECT, default: the key's project
+from who_am_i)::
 
-    PERMIO_API_KEY=perms_... pytest tests/test_live.py
+    PERMIO_API_KEY=perms_... PERMIO_BASE_URL=https://... pytest tests/test_live.py
 
 Everything it creates uses fixed IDs prefixed "sdk-it-python" and is removed
 before and after the run, so an interrupted run is cleaned up by the next one.
@@ -23,7 +23,6 @@ from urllib.parse import urlsplit
 import pytest
 
 from permio import (
-    DEV_BASE_URL,
     AsyncPermio,
     Permio,
     PermioAuthError,
@@ -33,11 +32,12 @@ from permio import (
 )
 
 API_KEY = os.environ.get("PERMIO_API_KEY", "")
-BASE_URL = os.environ.get("PERMIO_BASE_URL") or DEV_BASE_URL
+BASE_URL = os.environ.get("PERMIO_BASE_URL", "")
 
 
-ALLOWED_HOSTS = frozenset({"dev-api.perms.io", "localhost", "127.0.0.1", "::1"})
-ALLOWED_SUFFIXES = (".localhost", ".test")
+ALLOWED_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+ALLOWED_SUFFIXES = (".localhost", ".test", ".perms.io")
+PRODUCTION_HOST = "api.perms.io"
 
 
 def live_host(url: str) -> str:
@@ -56,20 +56,24 @@ def live_host(url: str) -> str:
 
 
 def is_allowed_target(url: str) -> bool:
-    """True only for the dev API and local/test hosts; everything else (prod included) is refused.
+    """True only for local/test hosts and non-production perms.io hosts.
 
-    The suite writes and deletes data, so this is an allowlist, not a production denylist.
+    The suite writes and deletes data, so this is an allowlist: production
+    (api.perms.io) and every other host is refused.
     """
     host = live_host(url)
+    if host == PRODUCTION_HOST:
+        return False
     return host in ALLOWED_HOSTS or (host.endswith(ALLOWED_SUFFIXES) and not host.startswith("."))
 
 
 pytestmark = [
     pytest.mark.live,
     pytest.mark.skipif(not API_KEY, reason="PERMIO_API_KEY is not set"),
+    pytest.mark.skipif(not BASE_URL, reason="PERMIO_BASE_URL is not set"),
     pytest.mark.skipif(
-        not is_allowed_target(BASE_URL),
-        reason="refusing to run the live test against anything but the dev API or a local/test host",
+        bool(BASE_URL) and not is_allowed_target(BASE_URL),
+        reason="refusing to run the live test against production or a host outside the allowlist",
     ),
 ]
 
