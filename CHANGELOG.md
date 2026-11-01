@@ -4,7 +4,7 @@ All notable changes to this package are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package uses
 [semantic versioning](https://semver.org/).
 
-## 0.3.0 (unreleased)
+## 0.3.0 (2026-11-01)
 
 ### Removed
 
@@ -19,7 +19,7 @@ All notable changes to this package are documented here. The format follows
   `127.0.0.1`, `::1`, `*.localhost`, `*.test` and `*.perms.io` except
   `api.perms.io` (production).
 
-## 0.2.0 (unreleased)
+## 0.2.0 (2026-10-27)
 
 ### Changed
 
